@@ -394,5 +394,17 @@ namespace CairoDesktop.Configuration.Properties {
                 this["LogSeverity"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool FullWidthTaskBar {
+            get {
+                return ((bool)(this["FullWidthTaskBar"]));
+            }
+            set {
+                this["FullWidthTaskBar"] = value;
+            }
+        }
     }
 }

@@ -1625,11 +1625,12 @@ namespace CairoDesktop.Interop
         public const int WM_COPYDATA = 0x004a;
         public const int WM_DISPLAYCHANGE = 0x007e;
         public const int WM_MOUSEACTIVATE = 0x0021;
-        public const int MA_NOACTIVATE = 0x0003;
         public const int WM_WINDOWPOSCHANGING = 0x0046;
         public const int WM_WINDOWPOSCHANGED = 0x0047;
+        public const int WM_NCHITTEST = 0x0084;
         public const int WM_DPICHANGED = 0x02E0;
         public const int WM_ACTIVATE = 0x0006;
+        public const int WM_SETFOCUS = 0x0007;
         public const int WM_COMMAND = 0x111;
         public const uint WM_LBUTTONDOWN = 0x201;
         public const uint WM_LBUTTONUP = 0x202;
@@ -1644,6 +1645,8 @@ namespace CairoDesktop.Interop
         public const uint WM_MOUSELEAVE = 0x2A3;
         public const uint WM_HOTKEY = 0x0312;
         public const int WM_DEVICECHANGE = 0x219;
+
+        public const int MA_NOACTIVATE = 0x0003;
 
         public const uint NIN_SELECT = 0x400;
         public const uint NIN_POPUPOPEN = 0x406;

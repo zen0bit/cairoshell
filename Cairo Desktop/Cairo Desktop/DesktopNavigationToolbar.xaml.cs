@@ -156,6 +156,8 @@ namespace CairoDesktop
         private void Browse_Click(object sender, RoutedEventArgs e)
         {
             if (Owner is Desktop owningDesktop)
+            {
+                ToolbarOwner.IsFbdOpen = true;
                 using (FolderBrowserDialog fbd = new FolderBrowserDialog
                 {
                     Description = Localization.DisplayString.sDesktop_BrowseTitle,
@@ -163,13 +165,15 @@ namespace CairoDesktop
                     SelectedPath = owningDesktop.CurrentLocation
                 })
                 {
-                    NativeMethods.SetForegroundWindow(helper.Handle);
+                    NativeMethods.SetForegroundWindow(helper.Handle); // bring browse window to front
                     if (fbd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                         if (owningDesktop.CurrentLocation != fbd.SelectedPath) // added to prevent duplicate entries into the PathHistory... Should we reimpliment the DynamicDesktop to handle this on its own???
                             if (Directory.Exists(fbd.SelectedPath))
                                 owningDesktop.Navigate(fbd.SelectedPath);
-
+                    ToolbarOwner.IsFbdOpen = false;
+                    ToolbarOwner.Activate(); // activate desktop, which should actually put it back to the bottom
                 }
+            }
         }
 
         public IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

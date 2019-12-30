@@ -9,6 +9,7 @@ namespace CairoDesktop.Localization
             new KeyValuePair<string, string>("English", "en_US"),
             new KeyValuePair<string, string>("Chinese (Simplified) 简体中文", "zh_CN"),
             new KeyValuePair<string, string>("Czech", "cs_CZ"),
+            new KeyValuePair<string, string>("Dutch (Nederlands)", "nl_NL"),
             new KeyValuePair<string, string>("Français", "fr_FR"),
             new KeyValuePair<string, string>("German", "de_DE"),
             new KeyValuePair<string, string>("Português (Brasil)", "pt_BR"),
@@ -56,6 +57,10 @@ namespace CairoDesktop.Localization
             else if (useLang.StartsWith("es_"))
             {
                 lang = Language.es_ES;
+            }
+            else if (useLang.StartsWith("nl_"))
+            {
+                lang = Language.nl_NL;
             }
             else
             {
@@ -300,6 +305,14 @@ namespace CairoDesktop.Localization
             get
             {
                 return getString("sInterface_AddToStacks");
+            }
+        }
+
+        public static string sInterface_RemoveFromStacks
+        {
+            get
+            {
+                return getString("sInterface_RemoveFromStacks");
             }
         }
 
@@ -775,6 +788,14 @@ namespace CairoDesktop.Localization
             }
         }
 
+        public static string sProgramsMenu_ChangeCategory
+        {
+            get
+            {
+                return getString("sProgramsMenu_ChangeCategory");
+            }
+        }
+
         public static string sPlacesMenu_Documents
         {
             get
@@ -852,6 +873,14 @@ namespace CairoDesktop.Localization
             get
             {
                 return getString("sStacks_OpenInNewWindow");
+            }
+        }
+
+        public static string sStacks_OpenOnDesktop
+        {
+            get
+            {
+                return getString("sStacks_OpenOnDesktop");
             }
         }
 
@@ -1532,6 +1561,14 @@ namespace CairoDesktop.Localization
             get
             {
                 return getString("sSettings_Taskbar_EnableTaskbarMultiMon");
+            }
+        }
+
+        public static string sSettings_Taskbar_FullWidthTaskBar
+        {
+            get
+            {
+                return getString("sSettings_Taskbar_FullWidthTaskBar");
             }
         }
 

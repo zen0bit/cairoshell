@@ -1,34 +1,27 @@
-﻿using System;
+﻿using CairoDesktop.Common;
+using CairoDesktop.Common.Logging;
+using CairoDesktop.Interop;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Windows;
 using System.Linq;
-using System.Diagnostics;
-using CairoDesktop.Common;
-using CairoDesktop.Interop;
+using System.Windows;
 using System.Windows.Data;
-using CairoDesktop.Common.Logging;
 
 namespace CairoDesktop.AppGrabber
 {
     public class AppGrabber : DependencyObject
     {
         private static DependencyProperty programsListProperty = DependencyProperty.Register("ProgramsList", typeof(List<ApplicationInfo>), typeof(AppGrabber), new PropertyMetadata(new List<ApplicationInfo>()));
-        
-        private static AppGrabber _instance = new AppGrabber();
-
         public static AppGrabberUI uiInstance;
 
         private static string[] excludedNames = { "documentation", "help", "install", "more info", "read me", "read first", "readme", "remove", "setup", "what's new", "support", "on the web", "safe mode" };
 
-        public static AppGrabber Instance
-        {
-            get { return _instance; }
-        }
+        public static AppGrabber Instance { get; } = new AppGrabber();
 
         public CategoryList CategoryList { get; set; }
         public List<ApplicationInfo> ProgramList
-        { 
+        {
             get
             {
                 this.ProgramList = GetApps();
@@ -38,30 +31,33 @@ namespace CairoDesktop.AppGrabber
             }
             private set
             {
-                if(this.Dispatcher.CheckAccess())
+                if (Dispatcher.CheckAccess())
                 {
                     SetValue(programsListProperty, value);
                 }
                 else
                 {
-                    this.Dispatcher.Invoke((Action)(() => this.ProgramList = value), null);
+                    Dispatcher.Invoke((Action)(() => this.ProgramList = value), null);
                 }
             }
         }
+
         public List<ApplicationInfo> NewApps { get; private set; }
-        
+
+        private Category _quickLaunch = null;
         public Category QuickLaunch
         {
             get
             {
-                Category quicklaunch = this.CategoryList.GetSpecialCategory(3);
-                
-                return quicklaunch;
+                if (_quickLaunch == null)
+                    _quickLaunch = CategoryList.GetSpecialCategory(AppCategoryType.QuickLaunch);
+
+                return _quickLaunch;
             }
         }
 
         public bool hasNewApps = false;
-        
+
         public String ConfigFile { get; set; }
 
         public static String[] ExecutableExtensions = {
@@ -73,14 +69,13 @@ namespace CairoDesktop.AppGrabber
                 ".appref-ms",
                 ".url"
             };
-
-        static String[] searchLocations = {
+        private static String[] searchLocations = {
                 Interop.Shell.UsersStartMenuPath,
                 Interop.Shell.AllUsersStartMenuPath
         };
 
         private AppGrabber()
-            : this(null) {}
+            : this(null) { }
 
         private AppGrabber(String configFile)
         {
@@ -90,10 +85,14 @@ namespace CairoDesktop.AppGrabber
             this.NewApps = new List<ApplicationInfo>();
         }
 
-        public void Load() {
-            if (Interop.Shell.Exists(ConfigFile)) {
+        public void Load()
+        {
+            if (Interop.Shell.Exists(ConfigFile))
+            {
                 this.CategoryList = CategoryList.Deserialize(ConfigFile);
-            } else {
+            }
+            else
+            {
                 // config file not initialized, run first start logic
                 this.CategoryList = new CategoryList(true);
 
@@ -101,7 +100,8 @@ namespace CairoDesktop.AppGrabber
             }
         }
 
-        public void Save() {
+        public void Save()
+        {
             this.CategoryList.Serialize(ConfigFile);
         }
 
@@ -111,7 +111,7 @@ namespace CairoDesktop.AppGrabber
             string pinnedPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar";
 
             if (Shell.Exists(pinnedPath))
-                this.QuickLaunch.AddRange(generateAppList(pinnedPath));
+                QuickLaunch.AddRange(generateAppList(pinnedPath));
         }
 
         private static List<ApplicationInfo> GetApps()
@@ -122,12 +122,12 @@ namespace CairoDesktop.AppGrabber
                 listsToMerge.Add(generateAppList(location));
             }
             List<ApplicationInfo> rval = mergeLists(listsToMerge);
-            
-            if(Shell.IsWindows8OrBetter)
+
+            if (Shell.IsWindows8OrBetter)
                 rval.AddRange(getStoreApps());
             return rval;
         }
-        
+
         private static List<ApplicationInfo> getStoreApps()
         {
             List<ApplicationInfo> storeApps = new List<ApplicationInfo>();
@@ -226,12 +226,12 @@ namespace CairoDesktop.AppGrabber
                             }
                         }
                     }
-                    
+
                     return ai;
                 }
                 catch (Exception ex)
                 {
-                    CairoLogger.Instance.Error("Error creating ApplicationInfo object in appgrabber. " + ex.Message,ex);
+                    CairoLogger.Instance.Error("Error creating ApplicationInfo object in appgrabber. " + ex.Message, ex);
                     return null;
                 }
             }
@@ -270,8 +270,10 @@ namespace CairoDesktop.AppGrabber
             return rval;
         }
 
-        public void ShowDialog() {
-            try {
+        public void ShowDialog()
+        {
+            try
+            {
                 if (uiInstance == null)
                 {
                     uiInstance = new AppGrabberUI(this);
@@ -279,7 +281,8 @@ namespace CairoDesktop.AppGrabber
                 }
 
                 uiInstance.Activate();
-            } catch { }
+            }
+            catch { }
         }
 
         /* Helper methods */
@@ -340,7 +343,7 @@ namespace CairoDesktop.AppGrabber
         public void RemoveAppConfirm(ApplicationInfo app)
         {
             string menu;
-            if (app.Category.Type == 3)
+            if (app.Category.Type == AppCategoryType.QuickLaunch)
                 menu = Localization.DisplayString.sAppGrabber_QuickLaunch;
             else
                 menu = Localization.DisplayString.sProgramsMenu;
@@ -357,7 +360,7 @@ namespace CairoDesktop.AppGrabber
             app.Name = newName;
             Save();
 
-            CollectionViewSource.GetDefaultView(CategoryList.GetSpecialCategory(1)).Refresh();
+            CollectionViewSource.GetDefaultView(CategoryList.GetSpecialCategory(AppCategoryType.All)).Refresh();
             CollectionViewSource.GetDefaultView(app.Category).Refresh();
         }
 
@@ -369,7 +372,7 @@ namespace CairoDesktop.AppGrabber
                 Shell.ShowFileProperties(app.Path);
         }
 
-        public void AddByPath(string[] fileNames, int categoryType)
+        public void AddByPath(string[] fileNames, AppCategoryType categoryType)
         {
             int count = 0;
             foreach (String fileName in fileNames)
@@ -389,17 +392,46 @@ namespace CairoDesktop.AppGrabber
                 Save();
         }
 
+        public void AddStoreApp(string appUserModelId, AppCategoryType categoryType)
+        {
+            bool success = false;
+            // not great but gets the job done I suppose
+            foreach (string[] app in UWPInterop.StoreAppHelper.GetStoreApps())
+            {
+                if (app[0] == appUserModelId)
+                {
+                    // bringo
+                    ApplicationInfo ai = new ApplicationInfo();
+                    ai.Name = app[1];
+                    ai.Path = "appx:" + appUserModelId;
+                    ai.Target = appUserModelId;
+                    ai.IconPath = app[2];
+                    ai.IconColor = app[3];
+
+                    // add it
+                    if (!object.ReferenceEquals(ai, null))
+                    {
+                        CategoryList.GetSpecialCategory(categoryType).Add(ai);
+                        success = true;
+                    }
+
+                    break;
+                }
+            }
+
+            if (success)
+                Save();
+        }
+
         public void AddToQuickLaunch(ApplicationInfo app)
         {
-            Category quickLaunch = CategoryList.GetSpecialCategory(3);
-
-            if (!quickLaunch.Contains(app))
+            if (!QuickLaunch.Contains(app))
             {
                 ApplicationInfo appClone = app.Clone();
                 appClone.Icon = null;
                 appClone.IconPath = null;
 
-                quickLaunch.Add(appClone);
+                QuickLaunch.Add(appClone);
 
                 Save();
             }

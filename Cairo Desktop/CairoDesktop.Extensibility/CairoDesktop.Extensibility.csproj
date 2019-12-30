@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CairoDesktop.Extensibility</RootNamespace>
     <AssemblyName>CairoDesktop.Extensibility</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -66,6 +66,7 @@
     <Compile Include="Attributes\PluginDefinitionAttribute.cs" />
     <Compile Include="ObjectModel\MenuItem.cs" />
     <Compile Include="ObjectModel\Services\PluginService.cs" />
+    <Compile Include="ObjectModel\Services\SettingsService.cs" />
     <Compile Include="ObjectModel\ShellExtension.cs" />
     <Compile Include="ObjectModel\ShellService.cs" />
     <Compile Include="Plugins\Plugin.cs" />

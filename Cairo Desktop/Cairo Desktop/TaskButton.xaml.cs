@@ -1,12 +1,46 @@
-﻿using CairoDesktop.Interop;
+﻿using CairoDesktop.AppGrabber;
+using CairoDesktop.Interop;
 using System;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace CairoDesktop
 {
-	public partial class TaskButton
-	{
-        public WindowsTasks.ApplicationWindow Window;
+    public partial class TaskButton
+    {
+        private ApplicationInfo _quickLaunchAppInfo;
+        public ApplicationInfo QuickLaunchAppInfo
+        {
+            get
+            {
+                if (_quickLaunchAppInfo == null)
+                {
+                    var Window = (this.DataContext as WindowsTasks.ApplicationWindow);
+                    if (Window != null)
+                    {
+                        foreach (ApplicationInfo ai in AppGrabber.AppGrabber.Instance.QuickLaunch)
+                        {
+                            if (ai.Target == Window.WinFileName || (Window.WinFileName.ToLower().Contains("applicationframehost.exe") && ai.Target == Window.AppUserModelID))
+                            {
+                                _quickLaunchAppInfo = ai;
+                                break;
+                            }
+                            else if (Window.Title.ToLower().Contains(ai.Name.ToLower()))
+                            {
+                                _quickLaunchAppInfo = ai;
+                            }
+                        }
+                    }
+                }
+
+                return _quickLaunchAppInfo;
+            }
+            set
+            {
+                _quickLaunchAppInfo = value;
+            }
+        }
+
 
         public static readonly DependencyProperty TextWidthProperty = DependencyProperty.Register("TextWidth", typeof(double), typeof(TaskButton), new PropertyMetadata(new double()));
         public double TextWidth
@@ -15,9 +49,10 @@ namespace CairoDesktop
             set { SetValue(TextWidthProperty, value); }
         }
 
+
         public TaskButton()
-		{
-			this.InitializeComponent();
+        {
+            this.InitializeComponent();
 
             switch (Configuration.Settings.TaskbarIconSize)
             {
@@ -78,6 +113,45 @@ namespace CairoDesktop
             if (Window != null)
             {
                 Window.Close();
+            }
+        }
+
+        /// <summary>
+        /// Handler that decides weather or not to show the miPin menuitem and seperator if the AppGraber doesnt already have it pinned.
+        /// This needs a little more work as the system works off the Executable path of the process, ssems to give some undesirable results in some situations
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void HandlerForCMO(object sender, ContextMenuEventArgs e)
+        {
+
+            if (QuickLaunchAppInfo == null)
+            {
+                miPin.Visibility = Visibility.Visible;
+                miPinSeperator.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                miPin.Visibility = Visibility.Collapsed;
+                miPinSeperator.Visibility = Visibility.Collapsed;
+            }
+
+        }
+
+        private void miPin_Click(object sender, RoutedEventArgs e)
+        {
+            var Window = (this.DataContext as WindowsTasks.ApplicationWindow);
+            if (Window != null)
+            {
+                if (Window.WinFileName.ToLower().Contains("applicationframehost.exe"))
+                {
+                    // store app, do special stuff
+                    AppGrabber.AppGrabber.Instance.AddStoreApp(Window.AppUserModelID, AppCategoryType.QuickLaunch);
+                }
+                else
+                {
+                    AppGrabber.AppGrabber.Instance.AddByPath(new string[] { Window.WinFileName }, AppCategoryType.QuickLaunch);
+                }
             }
         }
 

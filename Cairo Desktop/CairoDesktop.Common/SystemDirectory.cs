@@ -7,6 +7,8 @@ using System.Windows;
 using System.Windows.Threading;
 using CairoDesktop.Common.Logging;
 using CairoDesktop.Configuration;
+using CairoDesktop.Interop;
+using Microsoft.VisualBasic.FileIO;
 
 namespace CairoDesktop.Common {
 
@@ -227,6 +229,10 @@ namespace CairoDesktop.Common {
         }
 
         public override bool Equals(object other) {
+            if (other is string)
+            {
+                return this.FullName.Equals(other as string, StringComparison.OrdinalIgnoreCase);
+            }
             if (!(other is SystemDirectory)) return false;
             return this.FullName.Equals((other as SystemDirectory).FullName, StringComparison.OrdinalIgnoreCase);
         }
@@ -234,6 +240,38 @@ namespace CairoDesktop.Common {
         public override int GetHashCode()
         {
             return this.FullName.GetHashCode();
+        }
+
+
+
+        public void PasteFromClipboard()
+        {
+            IDataObject clipFiles = Clipboard.GetDataObject();
+            if (clipFiles.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (clipFiles.GetData(DataFormats.FileDrop) is string[] files)
+                {
+                    foreach (string file in files)
+                    {
+                        if (Shell.Exists(file))
+                        {
+                            try
+                            {
+                                FileAttributes attr = File.GetAttributes(file);
+                                if ((attr & FileAttributes.Directory) == FileAttributes.Directory)
+                                {
+                                    FileSystem.CopyDirectory(file, this.FullName + "\\" + new DirectoryInfo(file).Name, UIOption.AllDialogs);
+                                }
+                                else
+                                {
+                                    FileSystem.CopyFile(file, this.FullName + "\\" + Path.GetFileName(file), UIOption.AllDialogs);
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
         }
 
         #region IEquatable<T> Members

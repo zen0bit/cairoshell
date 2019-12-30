@@ -12,7 +12,7 @@ namespace CairoDesktop.Interop
     public partial class Shell
     {
         private const int MAX_PATH = 260;
-        private static Object iconLock = new Object();
+        public static Object ComLock = new Object();
 
         // DPI at user logon to the system
         private static double? _oldDpiScale;
@@ -65,7 +65,7 @@ namespace CairoDesktop.Interop
 
         private static IntPtr GetIcon(string filename, int size)
         {
-            lock (iconLock)
+            lock (ComLock)
             {
                 try
                 {
@@ -147,6 +147,24 @@ namespace CairoDesktop.Interop
             StringBuilder sbPath = new StringBuilder(MAX_PATH);
             SHGetFolderPath(IntPtr.Zero, FOLDER, IntPtr.Zero, 0, sbPath);
             return sbPath.ToString();
+        }
+
+        public static bool ExecuteProcess(string filename)
+        {
+            System.Diagnostics.Process proc = new System.Diagnostics.Process();
+            proc.StartInfo.UseShellExecute = true;
+            proc.StartInfo.FileName = filename;
+
+            try
+            {
+                return proc.Start();
+            }
+            catch
+            {
+                // No 'Open' command associated with this filetype in the registry
+                Interop.Shell.ShowOpenWithDialog(proc.StartInfo.FileName);
+                return false;
+            }
         }
 
         public static bool StartProcess(string filename)

@@ -1,14 +1,14 @@
 ﻿using CairoDesktop.Common;
+using CairoDesktop.Common.Logging;
 using CairoDesktop.Configuration;
 using CairoDesktop.Interop;
 using CairoDesktop.SupportingClasses;
-using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -24,6 +24,8 @@ namespace CairoDesktop
     {
         private WindowInteropHelper helper;
         private bool altF4Pressed;
+
+        public bool IsFbdOpen = false;
 
         public Stack<string> PathHistory = new Stack<string>();
         public DesktopIcons Icons;
@@ -58,12 +60,6 @@ namespace CairoDesktop
             Width = AppBarHelper.PrimaryMonitorSize.Width;
             Height = AppBarHelper.PrimaryMonitorSize.Height - 1;
 
-            if (Startup.IsCairoUserShell)
-            {
-                sepPersonalization.Visibility = Visibility.Collapsed;
-                miPersonalization.Visibility = Visibility.Collapsed;
-            }
-
             setGridPosition();
             setBackground();
         }
@@ -73,10 +69,17 @@ namespace CairoDesktop
         {
             if (Startup.IsCairoUserShell)
             {
-                if (BackgroundBrush == null)
-                    BackgroundBrush = GetCairoBackgroundBrush();
+                try
+                {
+                    if (BackgroundBrush == null)
+                        BackgroundBrush = GetCairoBackgroundBrush();
 
-                Background = BackgroundBrush;
+                    Background = BackgroundBrush;
+                }
+                catch
+                {
+                    CairoLogger.Instance.Error("Failed setting desktop background.");
+                }
             }
         }
 
@@ -87,6 +90,8 @@ namespace CairoDesktop
             // return GetCairoBackgroundBrush_Image();
             // return GetCairoBackgroundBrush_Color();
             // return GetCairoBackgroundBrush_Video();
+            // return GetCairoBackgroundBrush_BingImageOfTheDay();
+
         }
 
         private System.Windows.Media.Brush GetCairoBackgroundBrush_Windows()
@@ -176,19 +181,21 @@ namespace CairoDesktop
                 {
                     Uri backgroundImageUri = new Uri(wallpaper, UriKind.Absolute);
                     BitmapImage backgroundBitmapImage = new BitmapImage(backgroundImageUri);
+                    backgroundBitmapImage.Freeze();
                     backgroundImageBrush = new ImageBrush(backgroundBitmapImage);
-
+                    
                     switch (wallpaperStyle)
                     {
                         case CairoWallpaperStyle.Tile:
                             backgroundImageBrush.AlignmentX = AlignmentX.Left;
                             backgroundImageBrush.AlignmentY = AlignmentY.Top;
                             backgroundImageBrush.TileMode = TileMode.Tile;
-                            backgroundImageBrush.Stretch = Stretch.None;
-                            backgroundImageBrush.Viewport = new Rect(0,0, backgroundImageBrush.ImageSource.Width, backgroundImageBrush.ImageSource.Height);
+                            backgroundImageBrush.Stretch = Stretch.Fill; // stretch to fill viewport, which is pixel size of image, as WPF is DPI-aware
+                            backgroundImageBrush.Viewport = new Rect(0,0, (backgroundImageBrush.ImageSource as BitmapSource).PixelWidth, (backgroundImageBrush.ImageSource as BitmapSource).PixelHeight);
                             backgroundImageBrush.ViewportUnits = BrushMappingMode.Absolute;
                             break;
                         case CairoWallpaperStyle.Center:
+                            // need to find a way to ignore image DPI for this case
                             backgroundImageBrush.AlignmentX = AlignmentX.Center;
                             backgroundImageBrush.AlignmentY = AlignmentY.Center;
                             backgroundImageBrush.TileMode = TileMode.None;
@@ -216,10 +223,71 @@ namespace CairoDesktop
                             break;
                     }
                 });
+                backgroundImageBrush.Freeze();
             }
             return backgroundImageBrush;
         }
-               
+
+
+        private System.Windows.Media.Brush GetCairoBackgroundBrush_BingImageOfTheDay()
+        {
+            ImageBrush backgroundImageBrush = null;
+            TryAndEat(() =>
+            {
+
+                SupportingClasses.BingPhotoOfDayClient.BingWallPaperClient client = new SupportingClasses.BingPhotoOfDayClient.BingWallPaperClient();
+                client.DownLoad();
+
+                BitmapImage backgroundBitmapImage = client.WPFPhotoOfTheDay as BitmapImage;
+                backgroundBitmapImage.Freeze();
+                backgroundImageBrush = new ImageBrush(backgroundBitmapImage);
+
+                CairoWallpaperStyle wallpaperStyle = CairoWallpaperStyle.Stretch;
+                switch (wallpaperStyle)
+                {
+                    case CairoWallpaperStyle.Tile:
+                        backgroundImageBrush.AlignmentX = AlignmentX.Left;
+                        backgroundImageBrush.AlignmentY = AlignmentY.Top;
+                        backgroundImageBrush.TileMode = TileMode.Tile;
+                        backgroundImageBrush.Stretch = Stretch.Fill; // stretch to fill viewport, which is pixel size of image, as WPF is DPI-aware
+                        backgroundImageBrush.Viewport = new Rect(0, 0, (backgroundImageBrush.ImageSource as BitmapSource).PixelWidth, (backgroundImageBrush.ImageSource as BitmapSource).PixelHeight);
+                        backgroundImageBrush.ViewportUnits = BrushMappingMode.Absolute;
+                        break;
+                    case CairoWallpaperStyle.Center:
+                        // need to find a way to ignore image DPI for this case
+                        backgroundImageBrush.AlignmentX = AlignmentX.Center;
+                        backgroundImageBrush.AlignmentY = AlignmentY.Center;
+                        backgroundImageBrush.TileMode = TileMode.None;
+                        backgroundImageBrush.Stretch = Stretch.None;
+                        break;
+                    case CairoWallpaperStyle.Fit:
+                        backgroundImageBrush.AlignmentX = AlignmentX.Center;
+                        backgroundImageBrush.AlignmentY = AlignmentY.Center;
+                        backgroundImageBrush.TileMode = TileMode.None;
+                        backgroundImageBrush.Stretch = Stretch.Uniform;
+                        break;
+                    case CairoWallpaperStyle.Fill:
+                    case CairoWallpaperStyle.Span: // TODO: Impliment multiple monitor backgrounds
+                        backgroundImageBrush.AlignmentX = AlignmentX.Center;
+                        backgroundImageBrush.AlignmentY = AlignmentY.Center;
+                        backgroundImageBrush.TileMode = TileMode.None;
+                        backgroundImageBrush.Stretch = Stretch.UniformToFill;
+                        break;
+                    case CairoWallpaperStyle.Stretch:
+                    default:
+                        backgroundImageBrush.AlignmentX = AlignmentX.Center;
+                        backgroundImageBrush.AlignmentY = AlignmentY.Center;
+                        backgroundImageBrush.TileMode = TileMode.None;
+                        backgroundImageBrush.Stretch = Stretch.Fill;
+                        break;
+                }
+            });
+
+            backgroundImageBrush.Freeze();
+
+            return backgroundImageBrush;
+        }
+
         private void SetupPostInit()
         {
             Shell.HideWindowFromTasks(helper.Handle);
@@ -237,18 +305,31 @@ namespace CairoDesktop
                 handled = true;
                 return new IntPtr(NativeMethods.MA_NOACTIVATE);
             }
+            else if (msg == NativeMethods.WM_SETFOCUS || msg == NativeMethods.WM_WINDOWPOSCHANGED)
+            {
+                if (!IsOverlayOpen && !IsFbdOpen)
+                {
+                    Shell.ShowWindowBottomMost(helper.Handle);
+                    handled = true;
+                }
+            }
             else if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
             {
-                /*// Extract the WINDOWPOS structure corresponding to this message
-                NativeMethods.WINDOWPOS wndPos = NativeMethods.WINDOWPOS.FromMessage(lParam);
-
-                // Determine if the z-order is changing (absence of SWP_NOZORDER flag)
-                if (!((wndPos.flags & NativeMethods.SetWindowPosFlags.SWP_NOZORDER) == NativeMethods.SetWindowPosFlags.SWP_NOZORDER))
+                if (IsFbdOpen)
                 {
-                    // add the SWP_NOZORDER flag
-                    wndPos.flags = wndPos.flags | NativeMethods.SetWindowPosFlags.SWP_NOZORDER;
-                    wndPos.UpdateMessage(lParam);
-                }*/
+                    // workaround so that folder browser window comes to front, but not the desktop
+
+                    // Extract the WINDOWPOS structure corresponding to this message
+                    NativeMethods.WINDOWPOS wndPos = NativeMethods.WINDOWPOS.FromMessage(lParam);
+
+                    // Determine if the z-order is changing (absence of SWP_NOZORDER flag)
+                    if (!((wndPos.flags & NativeMethods.SetWindowPosFlags.SWP_NOZORDER) == NativeMethods.SetWindowPosFlags.SWP_NOZORDER))
+                    {
+                        // add the SWP_NOZORDER flag
+                        wndPos.flags = wndPos.flags | NativeMethods.SetWindowPosFlags.SWP_NOZORDER;
+                        wndPos.UpdateMessage(lParam);
+                    }
+                }
 
                 handled = true;
                 return new IntPtr(NativeMethods.MA_NOACTIVATE);
@@ -256,10 +337,12 @@ namespace CairoDesktop
             else if (msg == NativeMethods.WM_DISPLAYCHANGE && (Startup.IsCairoUserShell))
             {
                 SetPosition(((uint)lParam & 0xffff), ((uint)lParam >> 16));
+                BackgroundBrush = null;
+                setBackground();
                 handled = true;
             }
-            else if(msg                 == (int)NativeMethods.WM.SETTINGCHANGE && 
-                    wParam.ToInt32()    == (int)NativeMethods.SPI.SPI_SETDESKWALLPAPER)
+            else if (msg == (int)NativeMethods.WM.SETTINGCHANGE &&
+                    wParam.ToInt32() == (int)NativeMethods.SPI.SPI_SETDESKWALLPAPER)
             {
                 BackgroundBrush = null;
                 setBackground();
@@ -353,54 +436,6 @@ namespace CairoDesktop
             SetupPostInit();
         }
 
-        private void PasteFromClipboard()
-        {
-            IDataObject clipFiles = Clipboard.GetDataObject();
-            if (clipFiles.GetDataPresent(DataFormats.FileDrop))
-            {
-                if (clipFiles.GetData(DataFormats.FileDrop) is string[] files)
-                {
-                    foreach (string file in files)
-                    {
-                        if (Shell.Exists(file))
-                        {
-                            TryAndEat(() =>
-                            {
-                                FileAttributes attr = File.GetAttributes(file);
-                                if ((attr & FileAttributes.Directory) == FileAttributes.Directory)
-                                {
-                                    FileSystem.CopyDirectory(file, Icons.Location.FullName + "\\" + new DirectoryInfo(file).Name, UIOption.AllDialogs);
-                                }
-                                else
-                                {
-                                    FileSystem.CopyFile(file, Icons.Location.FullName + "\\" + Path.GetFileName(file), UIOption.AllDialogs);
-                                }
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-
-        private void miPaste_Click(object sender, RoutedEventArgs e)
-        {
-            PasteFromClipboard();
-        }
-
-        private void miPersonalization_Click(object sender, RoutedEventArgs e)
-        {
-            // doesn't work when shell because Settings app requires Explorer :(
-            if (!Shell.StartProcess("desk.cpl"))
-            {
-                CairoMessage.Show("Unable to open Personalization settings.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            else if (IsOverlayOpen)
-            {
-                IsOverlayOpen = false;
-            }
-        }
-
         private void grid_MouseRightButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (!Topmost)
@@ -488,6 +523,75 @@ namespace CairoDesktop
             try
             { action.Invoke(); }
             catch { }
+        }
+
+        private void CairoDesktopWindow_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            // handle icon and desktop context menus
+            if (e.OriginalSource.GetType() == typeof(System.Windows.Controls.ScrollViewer))
+            {
+                ShellContextMenu cm = new ShellContextMenu(Icons.Location, executeFolderAction);
+
+                e.Handled = true;
+            }
+            else
+            {
+                ShellContextMenu.OpenContextMenuFromIcon(e, executeFileAction);
+            }
+        }
+
+        private void executeFileAction(string action, string path, Button sender)
+        {
+            SystemFile file = new SystemFile(path);
+
+            if (action == "openFolder")
+            {
+                if (Settings.EnableDynamicDesktop)
+                {
+                    Navigate(path);
+                }
+                else
+                {
+                    FolderHelper.OpenLocation(path);
+                }
+            }
+            else if (action == "openWithShell")
+            {
+                FolderHelper.OpenWithShell(path);
+            }
+            else if (action == "rename" || action == "addStack" || action == "removeStack")
+            {
+                CustomCommands.PerformAction(action, path, sender);
+            }
+            else if (action != "cut" && action != "copy" && action != "link")
+            {
+                if (Startup.DesktopWindow != null)
+                    Startup.DesktopWindow.IsOverlayOpen = false;
+            }
+        }
+
+        private void executeFolderAction(string action, string path)
+        {
+            if (action == "paste")
+            {
+                Icons.Location.PasteFromClipboard();
+            }
+            else if (action == "openWithShell")
+            {
+                FolderHelper.OpenWithShell(path);
+            }
+            else if (action == "addStack" || action == "removeStack")
+            {
+                CustomCommands.PerformAction(action, path);
+                // no need to dismiss overlay for this action
+            }
+            else if (action != "")
+            {
+                CustomCommands.PerformAction(action, path);
+
+                if (Startup.DesktopWindow != null)
+                    Startup.DesktopWindow.IsOverlayOpen = false;
+            }
         }
     }
 }
