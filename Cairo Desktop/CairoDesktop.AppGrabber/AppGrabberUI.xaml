@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Window x:Class="CairoDesktop.AppGrabber.AppGrabberUI" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:l10n="clr-namespace:CairoDesktop.Localization;assembly=CairoDesktop.Localization"
-    Title="{Binding sAppGrabber}"
-    Width="774"
-    AllowsTransparency="True"
-    WindowStyle="None"
-    Background="Transparent"
-    WindowStartupLocation="CenterScreen" UseLayoutRounding="True" ContentRendered="Window_ContentRendered" Closing="Window_Closing">
+<Window x:Class="CairoDesktop.AppGrabber.AppGrabberUI"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l10n="clr-namespace:CairoDesktop.Localization;assembly=CairoDesktop.Localization"
+        Title="{Binding sAppGrabber}"
+        Width="774"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen" 
+        UseLayoutRounding="True" 
+        ContentRendered="Window_ContentRendered"
+        Closing="Window_Closing">
     <Window.Resources>
         <ResourceDictionary Source="AppGrabberUIResources.xaml" />
     </Window.Resources>
@@ -99,7 +105,7 @@
                     Grid.Row="6"
                     Grid.Column="3">
                     <Button Content="{Binding sInterface_Continue}" Style="{StaticResource CairoButtonStyle}"
-                        Click="btnContinue_Click"/>
+                        Click="btnContinue_Click" IsDefault="True"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -125,6 +131,7 @@
                 Grid.RowSpan="2">
                     <TextBlock Style="{StaticResource AppGrabberHeading}" Text="{Binding sAppGrabber_Page2Title}" />
                     <TextBlock Style="{StaticResource AppGrabberSubText}" Text="{Binding sAppGrabber_Page2Line1}" />
+                    <TextBlock Style="{StaticResource AppGrabberSubText}" Text="{Binding sAppGrabber_Page2Line2}" />
                     <TextBlock Style="{StaticResource AppGrabberSubHeading}" Text="{Binding sAppGrabber_Page2Directions}" />
                     <TextBlock Style="{StaticResource AppGrabberSubText}" Text="{Binding sAppGrabber_Page2Directions1}" />
                     <TextBlock Style="{StaticResource AppGrabberSubText}" Text="{Binding sAppGrabber_Page2Directions2}" />
@@ -175,7 +182,7 @@
                 Grid.Row="4"
                 Grid.Column="3">
                     <Button Content="{Binding sInterface_Finish}" Style="{StaticResource CairoButtonStyle}"
-                    Click="btnSave_Click"/>
+                    Click="btnSave_Click" />
                 </StackPanel>
             </Grid>
         </Border>

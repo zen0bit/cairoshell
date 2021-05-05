@@ -1,10 +1,10 @@
-﻿using CairoDesktop.Common.Logging;
-using CairoDesktop.Interop;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using ManagedShell.Common.Helpers;
+using ManagedShell.Common.Logging;
 
 namespace CairoDesktop.AppGrabber
 {
@@ -49,7 +49,7 @@ namespace CairoDesktop.AppGrabber
             Button button = sender as Button;
             Category actionableCategory = button.CommandParameter as Category;
             CategoryList catList = actionableCategory.ParentCategoryList;
-            switch (button.Content as String)
+            switch (button.Content as string)
             {
                 case "5":
                     catList.MoveCategory(actionableCategory, -1);
@@ -58,16 +58,6 @@ namespace CairoDesktop.AppGrabber
                     catList.MoveCategory(actionableCategory, 1);
                     break;
                 case "r":
-                    //Don't allow removal of special category
-                    if (actionableCategory.Type > 0) return;
-
-                    Category uncategorized = catList.GetSpecialCategory(AppCategoryType.Uncategorized);
-                    for (int i = actionableCategory.Count - 1; i >= 0; i--)
-                    {
-                        ApplicationInfo app = actionableCategory[i];
-                        actionableCategory.RemoveAt(i);
-                        uncategorized.Add(app);
-                    }
                     catList.Remove(actionableCategory);
                     break;
             }
@@ -112,7 +102,7 @@ namespace CairoDesktop.AppGrabber
         {
             if (e.Data.GetDataPresent(typeof(ApplicationInfo)))
             {
-                CairoLogger.Instance.Debug(e.Data.GetData(typeof(ApplicationInfo)).ToString());
+                ShellLogger.Debug(e.Data.GetData(typeof(ApplicationInfo)).ToString());
                 ApplicationInfo dropData = e.Data.GetData(typeof(ApplicationInfo)) as ApplicationInfo;
                 ListView dropTarget = sender as ListView;
 
@@ -135,7 +125,6 @@ namespace CairoDesktop.AppGrabber
                                 target.Add(dropClone);
 
                             dropClone.Icon = null; // icon may differ depending on category
-                            dropClone.IconPath = null;
                         }
                         else
                         {
@@ -155,6 +144,11 @@ namespace CairoDesktop.AppGrabber
                         if (source.Type != AppCategoryType.QuickLaunch)
                         {
                             target.Add(dropData); // if coming from quick launch, simply remove from quick launch
+
+                            if (dropTarget.Items.Contains(dropData))
+                            {
+                                dropTarget.ScrollIntoView(dropTarget.Items[dropTarget.Items.IndexOf(dropData)]);
+                            }
                         }
                     }
                 }
@@ -164,6 +158,11 @@ namespace CairoDesktop.AppGrabber
 
                     (sourceView.ItemsSource as IList<ApplicationInfo>).Remove(dropData);
                     (dropTarget.ItemsSource as IList<ApplicationInfo>).Add(dropData);
+
+                    if (dropTarget.Items.Contains(dropData))
+                    {
+                        dropTarget.ScrollIntoView(dropTarget.Items[dropTarget.Items.IndexOf(dropData)]);
+                    }
                 }
             }
             else if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -177,11 +176,11 @@ namespace CairoDesktop.AppGrabber
                     {
                         foreach (String fileName in fileNames)
                         {
-                            CairoLogger.Instance.Debug(fileName);
+                            ShellLogger.Debug(fileName);
 
-                            if (Shell.Exists(fileName))
+                            if (ShellHelper.Exists(fileName))
                             {
-                                ApplicationInfo customApp = AppGrabber.PathToApp(fileName, false);
+                                ApplicationInfo customApp = AppGrabberService.PathToApp(fileName, false, false);
                                 if (!object.ReferenceEquals(customApp, null))
                                 {
                                     (dropTarget.ItemsSource as IList<ApplicationInfo>).Add(customApp);
@@ -224,7 +223,7 @@ namespace CairoDesktop.AppGrabber
                     catch (Exception ex)
                     {
                         //Output the reason to the debugger
-                        CairoLogger.Instance.Error("Error doing Drag-Drop from appgrabber:" + ex.Message, ex);
+                        ShellLogger.Error("Error doing Drag-Drop from appgrabber:" + ex.Message, ex);
                     }
                 }
             }
@@ -255,7 +254,7 @@ namespace CairoDesktop.AppGrabber
 
             if (e.Data.GetDataPresent(typeof(Category)))
             {
-                CairoLogger.Instance.Debug(e.Data.GetData(typeof(Category)).ToString());
+                ShellLogger.Debug(e.Data.GetData(typeof(Category)).ToString());
                 Category dropData = e.Data.GetData(typeof(Category)) as Category;
 
                 CategoryList parent = dropCategory.ParentCategoryList;
@@ -276,7 +275,6 @@ namespace CairoDesktop.AppGrabber
                         ApplicationInfo dropClone = dropData.Clone();
                         dropCategory.Add(dropClone);
                         dropClone.Icon = null; // icon may differ depending on category
-                        dropClone.IconPath = null;
                     }
                 }
                 else if (sourceView != null)
@@ -310,7 +308,7 @@ namespace CairoDesktop.AppGrabber
                 catch (Exception ex)
                 {
                     //Output the reason to the debugger
-                    CairoLogger.Instance.Error("Error doing Drag-Drop from AppGrabber TextBlock. Details: " + ex.Message , ex);
+                    ShellLogger.Error("Error doing Drag-Drop from AppGrabber TextBlock. Details: " + ex.Message , ex);
                 }
             }
         }

@@ -5,6 +5,8 @@ using CairoDesktop.Configuration;
 using CairoDesktop.Common;
 using CairoDesktop.SupportingClasses;
 using System.Windows.Input;
+using CairoDesktop.Services;
+using ManagedShell.ShellFolders;
 
 namespace CairoDesktop {
     /// <summary>
@@ -12,56 +14,44 @@ namespace CairoDesktop {
     /// </summary>
     public partial class StacksContainer : UserControl 
     {
+        public MenuBar MenuBar;
+
+        public static DependencyProperty PopupWidthProperty = DependencyProperty.Register("PopupWidth", typeof(double), typeof(StacksContainer), new PropertyMetadata(new double()));
+        public double PopupWidth
+        {
+            get { return (double)GetValue(PopupWidthProperty); }
+            set { SetValue(PopupWidthProperty, value); }
+        }
+
         public StacksContainer() 
         {
             InitializeComponent();
-        }
 
-        private void locationDisplay_DragEnter(object sender, DragEventArgs e)
-        {
-            String[] formats = e.Data.GetFormats(true);
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                e.Effects = DragDropEffects.Copy;
-            }
-
-            e.Handled = true;
-        }
-
-        private void locationDisplay_Drop(object sender, DragEventArgs e)
-        {
-            String[] fileNames = e.Data.GetData(DataFormats.FileDrop) as String[];
-            if (fileNames != null) 
-            {
-                foreach (String fileName in fileNames)
-                {
-                    StacksManager.AddLocation(fileName);
-                }
-            }
-            else if (e.Data.GetDataPresent(typeof(SystemDirectory)))
-            {
-                SystemDirectory dropData = e.Data.GetData(typeof(SystemDirectory)) as SystemDirectory;
-
-                int initialIndex = StacksManager.StackLocations.IndexOf(dropData);
-                StacksManager.StackLocations.Move(initialIndex, StacksManager.StackLocations.Count - 1);
-            }
-
-            e.Handled = true;
+            DataContext = StacksManager.Instance;
         }
 
         private void Remove_Click(object sender, RoutedEventArgs e)
         {
-            StacksManager.StackLocations.Remove((sender as MenuItem).CommandParameter as SystemDirectory);
+            StacksManager.Instance.RemoveLocation((sender as MenuItem).CommandParameter as ShellFolder);
         }
         
         private void Open_Click(object sender, RoutedEventArgs e)
         {
-            openDir((sender as ICommandSource).CommandParameter.ToString(), true);
+            OpenDir((sender as ICommandSource).CommandParameter.ToString(), true);
         }
 
         private void OpenDesktop_Click(object sender, RoutedEventArgs e)
         {
-            openDir((sender as ICommandSource).CommandParameter.ToString(), false);
+            OpenDir((sender as ICommandSource).CommandParameter.ToString(), false);
+        }
+
+        private void NameLabel_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // set popup width in case the display changed
+            if (e.ChangedButton == MouseButton.Left && MenuBar != null)
+            {
+                PopupWidth = MenuBar.Width;
+            }
         }
 
         private void NameLabel_PreviewMouseUp(object sender, MouseButtonEventArgs e)
@@ -71,38 +61,110 @@ namespace CairoDesktop {
             {
                 // Some checks just in case.
                 ICommandSource cmdsrc = sender as ICommandSource;
-                if (cmdsrc?.CommandParameter is SystemDirectory cmdparam)
+                if (cmdsrc?.CommandParameter is ShellFolder cmdparam)
                 {
-                    openDir(cmdparam.FullName, false); 
+                    OpenDir(cmdparam.Path, false); 
                     e.Handled = true;
                 }
             }
         }
-        
+
         /// <summary>
         /// Launches the FileManager specified in the application Settings object to the specified directory.
         /// </summary>
         /// <param name="directoryPath">Directory to open.</param>
-        private void openDir(string directoryPath, bool openWithShell) 
+        /// <param name="alwaysOpenWithShell">If true, user preferences will not be honored and the shell will always be used to open the directory.</param>
+        internal void OpenDir(string directoryPath, bool alwaysOpenWithShell) 
         {
-            if ((!openWithShell && !FolderHelper.OpenLocation(directoryPath)) || (openWithShell && !FolderHelper.OpenWithShell(directoryPath)))
+            if ((!alwaysOpenWithShell && !FolderHelper.OpenLocation(directoryPath)) || (alwaysOpenWithShell && !FolderHelper.OpenWithShell(directoryPath)))
             {
-                CairoMessage.Show(Localization.DisplayString.sError_FileNotFoundInfo, Localization.DisplayString.sError_OhNo, MessageBoxButton.OK, MessageBoxImage.Error);
+                CairoMessage.Show(Localization.DisplayString.sError_FileNotFoundInfo, Localization.DisplayString.sError_OhNo, MessageBoxButton.OK, CairoMessageImage.Error);
             }
         }
 
-        #region Drag and drop reordering
+        #region Drag and drop
 
-        private Point? startPoint = null;
-        private bool ctxOpen = false;
-        private bool inMove = false;
+        private Point? startPoint;
+        private bool ctxOpen;
+        private bool inMove;
+
+        private void locationDisplay_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Link;
+            }
+            else if (e.Data.GetDataPresent(typeof(ShellFolder)))
+            {
+                e.Effects = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        private void locationDisplay_DragOver(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop) && !e.Data.GetDataPresent(typeof(ShellFolder)))
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+            }
+            else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                // check to see if there at least one path we can add
+                string[] fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
+                bool canAdd = false;
+                if (fileNames != null)
+                {
+                    foreach (string fileName in fileNames)
+                    {
+                        if (StacksManager.Instance.CanAdd(fileName))
+                        {
+                            canAdd = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!canAdd)
+                {
+                    e.Effects = DragDropEffects.None;
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void locationDisplay_Drop(object sender, DragEventArgs e)
+        {
+            string[] fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (fileNames != null)
+            {
+                foreach (string fileName in fileNames)
+                {
+                    StacksManager.Instance.AddLocation(fileName);
+                }
+            }
+            else if (e.Data.GetDataPresent(typeof(ShellFolder)))
+            {
+                ShellFolder dropData = e.Data.GetData(typeof(ShellFolder)) as ShellFolder;
+
+                int initialIndex = StacksManager.Instance.StackLocations.IndexOf(dropData);
+                StacksManager.Instance.StackLocations.Move(initialIndex, StacksManager.Instance.StackLocations.Count - 1);
+            }
+
+            e.Handled = true;
+        }
 
         private void StackMenu_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (!ctxOpen)
             {
                 // Store the mouse position
-                startPoint = e.GetPosition(null);
+                startPoint = e.GetPosition(this);
             }
         }
 
@@ -112,13 +174,13 @@ namespace CairoDesktop {
             {
                 inMove = true;
 
-                Point mousePos = e.GetPosition(null);
+                Point mousePos = e.GetPosition(this);
                 Vector diff = (Point)startPoint - mousePos;
 
-                if (mousePos.Y <= this.ActualHeight && ((Point)startPoint).Y <= this.ActualHeight && e.LeftButton == MouseButtonState.Pressed && (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance || Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance))
+                if (mousePos.Y <= ActualHeight && ((Point)startPoint).Y <= ActualHeight && e.LeftButton == MouseButtonState.Pressed && (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance || Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance))
                 {
                     Menu menu = sender as Menu;
-                    SystemDirectory selectedDir = menu.DataContext as SystemDirectory;
+                    ShellFolder selectedDir = menu.DataContext as ShellFolder;
 
                     try
                     {
@@ -128,38 +190,38 @@ namespace CairoDesktop {
 
                     // reset the stored mouse position
                     startPoint = null;
+
+                    e.Handled = true;
                 }
 
                 inMove = false;
             }
-
-            e.Handled = true;
         }
 
         private void StackMenu_Drop(object sender, DragEventArgs e)
         {
             Menu dropContainer = sender as Menu;
-            SystemDirectory replacedDir = dropContainer.DataContext as SystemDirectory;
+            ShellFolder replacedDir = dropContainer.DataContext as ShellFolder;
 
-            String[] fileNames = e.Data.GetData(DataFormats.FileDrop) as String[];
+            string[] fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (fileNames != null)
             {
-                foreach (String fileName in fileNames)
+                foreach (string fileName in fileNames)
                 {
-                    if (StacksManager.AddLocation(fileName))
+                    if (StacksManager.Instance.AddLocation(fileName))
                     {
-                        int dropIndex = StacksManager.StackLocations.IndexOf(replacedDir);
-                        StacksManager.StackLocations.Move(StacksManager.StackLocations.Count - 1, dropIndex);
+                        int dropIndex = StacksManager.Instance.StackLocations.IndexOf(replacedDir);
+                        StacksManager.Instance.StackLocations.Move(StacksManager.Instance.StackLocations.Count - 1, dropIndex);
                     }
                 }
             }
-            else if (e.Data.GetDataPresent(typeof(SystemDirectory)))
+            else if (e.Data.GetDataPresent(typeof(ShellFolder)))
             {
-                SystemDirectory dropData = e.Data.GetData(typeof(SystemDirectory)) as SystemDirectory;
+                ShellFolder dropData = e.Data.GetData(typeof(ShellFolder)) as ShellFolder;
 
-                int initialIndex = StacksManager.StackLocations.IndexOf(dropData);
-                int dropIndex = StacksManager.StackLocations.IndexOf(replacedDir);
-                StacksManager.StackLocations.Move(initialIndex, dropIndex);
+                int initialIndex = StacksManager.Instance.StackLocations.IndexOf(dropData);
+                int dropIndex = StacksManager.Instance.StackLocations.IndexOf(replacedDir);
+                StacksManager.Instance.StackLocations.Move(initialIndex, dropIndex);
             }
 
             e.Handled = true;
@@ -176,7 +238,7 @@ namespace CairoDesktop {
             startPoint = null;
             ctxOpen = true;
 
-            if (!Settings.EnableDynamicDesktop || !Settings.EnableDesktop)
+            if (!Settings.Instance.EnableDynamicDesktop || !DesktopManager.IsEnabled)
             {
                 ContextMenu menu = (sender as ContextMenu);
                 foreach (Control item in menu.Items)
@@ -197,19 +259,21 @@ namespace CairoDesktop {
 
         #endregion
 
-        private void Scroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        private void MenuItem_OnSubmenuOpened(object sender, RoutedEventArgs e)
         {
-            var scrollViewer = System.Windows.Media.VisualTreeHelper.GetChild(sender as ListView, 0) as ScrollViewer;
-
-            if (scrollViewer == null)
-                return;
-
-            if (e.Delta < 0)
-                scrollViewer.LineRight();
-            else
-                scrollViewer.LineLeft();
-
-            e.Handled = true;
+            if (sender is MenuItem menuItem)
+            {
+                if (menuItem.Items.Count > 0 && menuItem.Items[0] is MenuItem subMenuItem)
+                {
+                    StacksScroller scroller = new StacksScroller()
+                    {
+                        DataContext = menuItem.DataContext,
+                        ParentContainer = this,
+                        ParentMenuItem = menuItem
+                    };
+                    subMenuItem.Header = scroller;
+                }
+            }
         }
     }
 }

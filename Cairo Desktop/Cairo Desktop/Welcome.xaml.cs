@@ -1,18 +1,12 @@
-﻿using CairoDesktop.Configuration;
-using CairoDesktop.Interop;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using CairoDesktop.AppGrabber;
+using CairoDesktop.Application.Interfaces;
+using CairoDesktop.Common;
+using CairoDesktop.Configuration;
+using CairoDesktop.Localization;
+using CairoDesktop.Services;
 
 namespace CairoDesktop
 {
@@ -21,34 +15,66 @@ namespace CairoDesktop
     /// </summary>
     public partial class Welcome : Window
     {
-        const int maxSize = 780;
-        string language = "en_US";
+        private readonly AppGrabberService _appGrabber;
+        private readonly ICairoApplication _cairoApplication;
 
-        public Welcome()
+        const int maxSize = 780;
+        string _initialLanguage = "en_US";
+
+        public Welcome(ICairoApplication cairoApplication, AppGrabberService appGrabber)
         {
+            _appGrabber = appGrabber;
+            _cairoApplication = cairoApplication;
+
             InitializeComponent();
 
-            double size = SupportingClasses.AppBarHelper.PrimaryMonitorSize.Height - 100;
+            SetSizeAndLocation();
 
-            if (size >= maxSize)
-                Height = maxSize;
-            else
-                Height = size;
-
-            MaxHeight = SupportingClasses.AppBarHelper.PrimaryMonitorSize.Height;
-
-            loadLanguages();
+            LoadLanguages();
         }
 
-        private void loadLanguages()
+        private void SetSizeAndLocation()
         {
-            language = Settings.Language;
+            SetSize();
+            SetLocation();
+        }
+
+        private void SetSize()
+        {
+            double size = WindowManager.PrimaryMonitorSize.Height - 100;
+            if (size >= maxSize)
+            {
+                Height = maxSize;
+            }
+            else
+            {
+                Height = size;
+            }
+
+            MaxHeight = WindowManager.PrimaryMonitorSize.Height;
+        }
+
+        private void SetLocation()
+        {
+            Left = (SystemParameters.FullPrimaryScreenWidth - Width) / 2;
+            Top = (SystemParameters.FullPrimaryScreenHeight - Height) / 2;
+
+            WindowStartupLocation = WindowStartupLocation.Manual;
+        }
+
+        private void LoadLanguages()
+        {
+            _initialLanguage = Settings.Instance.Language;
+
             cboLangSelect.DisplayMemberPath = "Key";
             cboLangSelect.SelectedValuePath = "Value";
-            foreach (KeyValuePair<string, string> lang in Localization.DisplayString.Languages)
+
+            foreach (KeyValuePair<string, string> lang in DisplayString.Languages)
             {
                 cboLangSelect.Items.Add(lang);
             }
+
+            cboLangSelect.SelectedValue = Settings.Instance.Language;
         }
 
         private void btnGoPage2_Click(object sender, RoutedEventArgs e)
@@ -71,17 +97,23 @@ namespace CairoDesktop
 
         private void btnAppGrabber_Click(object sender, RoutedEventArgs e)
         {
-            Settings.IsFirstRun = false;
-            AppGrabber.AppGrabber.Instance.ShowDialog();
+            Settings.Instance.IsFirstRun = false;
+            _appGrabber?.ShowDialog();
             Close();
         }
 
         private void cboLangSelect_DropDownClosed(object sender, EventArgs e)
         {
-            if (Settings.Language != language)
+            if (Settings.Instance.Language != _initialLanguage)
             {
-                Common.CairoMessage.Show(Localization.DisplayString.sWelcome_ChangingLanguageText, Localization.DisplayString.sWelcome_ChangingLanguage, MessageBoxButton.OK, MessageBoxImage.Information);
-                Startup.Restart();
+                CairoMessage.Show(DisplayString.sWelcome_ChangingLanguageText, DisplayString.sWelcome_ChangingLanguage, MessageBoxButton.OK, CairoMessageImage.Information,
+                    result =>
+                    {
+                        if (result == true)
+                        {
+                            _cairoApplication?.RestartCairo();
+                        }
+                    });
             }
         }
     }

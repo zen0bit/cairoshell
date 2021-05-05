@@ -1,9 +1,11 @@
-﻿using CairoDesktop.Common;
-using System;
+﻿using System;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using ManagedShell.Common.Enums;
+using ManagedShell.Common.Helpers;
 
 namespace CairoDesktop.AppGrabber
 {
@@ -15,8 +17,8 @@ namespace CairoDesktop.AppGrabber
         /// </summary>
 		public ApplicationInfo()
         {
-            this.Name = "";
-            this.Path = "";
+            Name = "";
+            Path = "";
         }
 
         /// <summary>
@@ -26,17 +28,16 @@ namespace CairoDesktop.AppGrabber
         /// <param name="path">Path to the shortcut.</param>
         /// <param name="target">Path to the executable.</param>
         /// <param name="icon">ImageSource used to denote the application's icon in a graphical environment.</param>
-        public ApplicationInfo(string name, string path, string target, ImageSource icon, string iconColor, string iconPath)
+        public ApplicationInfo(string name, string path, string target, ImageSource icon, string iconColor)
         {
-            this.Name = name;
-            this.Path = path;
-            this.Target = target;
-            this.Icon = icon;
-            this.IconColor = iconColor;
-            this.IconPath = iconPath;
+            Name = name;
+            Path = path;
+            Target = target;
+            Icon = icon;
+            IconColor = iconColor;
         }
 
-        private bool _iconLoading = false;
+        private bool _iconLoading;
 
         private string name;
         /// <summary>
@@ -48,11 +49,7 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 name = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("Name"));
-                }
+                OnPropertyChanged();
             }
         }
 
@@ -66,11 +63,7 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 path = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("Path"));
-                }
+                OnPropertyChanged();
             }
         }
 
@@ -104,17 +97,13 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 target = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("Target"));
-                }
+                OnPropertyChanged();
             }
         }
 
         private string iconColor;
         /// <summary>
-        /// Path to the executable.
+        /// Icon plate background color
         /// </summary>
         public string IconColor
         {
@@ -128,29 +117,7 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 iconColor = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("IconColor"));
-                }
-            }
-        }
-
-        private string iconPath;
-        /// <summary>
-        /// Path to the executable.
-        /// </summary>
-        public string IconPath
-        {
-            get { return iconPath; }
-            set
-            {
-                iconPath = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("IconPath"));
-                }
+                OnPropertyChanged();
             }
         }
 
@@ -164,11 +131,7 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 alwaysAdmin = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("AlwaysAdmin"));
-                }
+                OnPropertyChanged();
             }
         }
 
@@ -182,11 +145,7 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 askAlwaysAdmin = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("AskAlwaysAdmin"));
-                }
+                OnPropertyChanged();
             }
         }
 
@@ -202,15 +161,12 @@ namespace CairoDesktop.AppGrabber
                 {
                     _iconLoading = true;
 
-                    var thread = new Thread(() =>
+                    Task.Factory.StartNew(() =>
                     {
                         Icon = GetAssociatedIcon();
                         Icon.Freeze();
                         _iconLoading = false;
-                    });
-                    thread.IsBackground = true;
-                    thread.SetApartmentState(ApartmentState.STA);
-                    thread.Start();
+                    }, CancellationToken.None, TaskCreationOptions.None, IconHelper.IconScheduler);
                 }
 
                 return icon;
@@ -218,11 +174,7 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 icon = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("Icon"));
-                }
+                OnPropertyChanged();
             }
         }
 
@@ -230,14 +182,14 @@ namespace CairoDesktop.AppGrabber
         {
             get
             {
-                return this.path.StartsWith("appx:");
+                return path.StartsWith("appx:");
             }
         }
 
         private Category category;
         /// <summary>
         /// The Category object to which this ApplicationInfo object belongs.
-        /// Note: DO NOT ASSIGN MANUALLY. This property should only be set by a Category oject when adding/removing from its internal list.
+        /// Note: DO NOT ASSIGN MANUALLY. This property should only be set by a Category object when adding/removing from its internal list.
         /// </summary>
         public Category Category
         {
@@ -245,14 +197,11 @@ namespace CairoDesktop.AppGrabber
             set
             {
                 category = value;
-                // Notify Databindings of property change
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs("Category"));
-                }
+                OnPropertyChanged();
             }
         }
 
+        #region IEquatable
         /// <summary>
         /// Determines if this ApplicationInfo object refers to the same application as another ApplicationInfo object.
         /// </summary>
@@ -261,13 +210,13 @@ namespace CairoDesktop.AppGrabber
         public bool Equals(ApplicationInfo other)
         {
             //if (this.Name != other.Name) return false; -- because apps can be renamed, this is no longer valid
-            if (this.Path == other.Path)
+            if (Path == other.Path)
             {
                 return true;
             }
-            if (System.IO.Path.GetExtension(this.Path).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+            if (System.IO.Path.GetExtension(Path).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
             {
-                if ((this.Target == other.Target) && (this.Name == other.Name))
+                if (Target == other.Target && Name == other.Name)
                 {
                     return true;
                 }
@@ -284,7 +233,7 @@ namespace CairoDesktop.AppGrabber
         {
             if (!(obj is ApplicationInfo))
                 return false;
-            return this.Equals((ApplicationInfo)obj);
+            return Equals((ApplicationInfo)obj);
         }
 
         public override int GetHashCode()
@@ -296,7 +245,9 @@ namespace CairoDesktop.AppGrabber
                 hashCode ^= Path.GetHashCode();
             return hashCode;
         }
+        #endregion
 
+        #region IComparable
         /// <summary>
         /// Is this object greater than, less than, or equal to another ApplicationInfo? (For sorting purposes only)
         /// </summary>
@@ -304,12 +255,13 @@ namespace CairoDesktop.AppGrabber
         /// <returns>0 if same, negative if less, positive if more.</returns>
         public int CompareTo(ApplicationInfo other)
         {
-            return this.Name.CompareTo(other.Name);
+            return Name.CompareTo(other.Name);
         }
+        #endregion
 
         public override string ToString()
         {
-            return string.Format("Name={0} Path={1}", this.Name, this.Path);
+            return $"Name={Name} Path={Path}";
         }
 
         public static bool operator ==(ApplicationInfo x, ApplicationInfo y)
@@ -328,53 +280,44 @@ namespace CairoDesktop.AppGrabber
             return !(x == y);
         }
 
-        /// <summary>
-        /// This Event is raised whenever a property of this object has changed. Necesary to sync state when binding.
-        /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
+        private ImageSource GetAssociatedIcon()
+        {
+            IconSize size = IconSize.Small;
+            if (Category != null && Category.Type == AppCategoryType.QuickLaunch && (IconSize)Configuration.Settings.Instance.TaskbarIconSize != IconSize.Small)
+                size = IconSize.Large;
+
+            return GetIconImageSource(size);
+        }
 
         /// <summary>
         /// Gets an ImageSource object representing the associated icon of a file.
         /// </summary>
-        public ImageSource GetAssociatedIcon()
+        public ImageSource GetIconImageSource(IconSize size)
         {
-            int size = 1;
-            if (this.Category != null && this.Category.Type == AppCategoryType.QuickLaunch && Configuration.Settings.TaskbarIconSize != 1)
-                size = 0;
-
-            if (this.IsStoreApp)
+            if (IsStoreApp)
             {
-                if (string.IsNullOrEmpty(this.IconPath) || !Interop.Shell.Exists(this.IconPath))
-                {
-                    try
-                    {
-                        string[] icon = UWPInterop.StoreAppHelper.GetAppIcon(this.Target, size);
-                        this.IconPath = icon[0];
-                        this.IconColor = icon[1];
-                    }
-                    catch
-                    {
-                        return IconImageConverter.GetDefaultIcon();
-                    }
-                }
+                var storeApp = ManagedShell.UWPInterop.StoreAppHelper.AppList.GetAppByAumid(Target);
 
-                try
-                {
-                    BitmapImage img = new BitmapImage();
-                    img.BeginInit();
-                    img.UriSource = new Uri(this.IconPath, UriKind.Absolute);
-                    img.CacheOption = BitmapCacheOption.OnLoad;
-                    img.EndInit();
-                    img.Freeze();
-                    return img;
-                }
-                catch
+                if (storeApp == null)
                 {
                     return IconImageConverter.GetDefaultIcon();
                 }
+
+                return storeApp.GetIconImageSource(size);
             }
-            else
-                return IconImageConverter.GetImageFromAssociatedIcon(this.Path, size);
+            
+            return IconImageConverter.GetImageFromAssociatedIcon(Path, size);
+        }
+
+        public static ApplicationInfo FromStoreApp(ManagedShell.UWPInterop.StoreApp storeApp)
+        {
+            ApplicationInfo ai = new ApplicationInfo();
+            ai.Name = storeApp.DisplayName;
+            ai.Path = "appx:" + storeApp.AppUserModelId;
+            ai.Target = storeApp.AppUserModelId;
+            ai.IconColor = storeApp.IconColor;
+
+            return ai;
         }
 
         /// <summary>
@@ -383,9 +326,17 @@ namespace CairoDesktop.AppGrabber
         /// <returns>A new ApplicationInfo object with the same data as this object, not bound to a Category.</returns>
         internal ApplicationInfo Clone()
         {
-            ApplicationInfo rval = new ApplicationInfo(this.Name, this.Path, this.Target, this.Icon, this.IconColor, this.IconPath);
+            ApplicationInfo rval = new ApplicationInfo(Name, Path, Target, Icon, IconColor);
             return rval;
         }
+
+        #region INotifyPropertyChanged
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        #endregion
     }
 
 }

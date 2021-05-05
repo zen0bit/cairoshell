@@ -1,11 +1,15 @@
-﻿using CairoDesktop.Common.Logging;
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Xml;
+using ManagedShell.Common.Helpers;
+using ManagedShell.Common.Logging;
 
 namespace CairoDesktop.AppGrabber {
 
     public class CategoryList : ObservableCollection<Category> {
+
+        public const int MIN_CATEGORIES = 3;
+        public event EventHandler<EventArgs> CategoryChanged;
 
         /// <summary>
         /// Simple wrapper around an ObservableCollection of Category objects.
@@ -74,6 +78,34 @@ namespace CairoDesktop.AppGrabber {
         public new void Add(Category category) {
             base.Add(category);
             category.ParentCategoryList = this;
+            category.CollectionChanged += Category_CollectionChanged;
+        }
+
+        /// <summary>
+        /// Removes a Category object from this CategoryList.
+        /// </summary>
+        /// <param name="category">Category to remove.</param>
+        public new void Remove(Category category)
+        {
+            // Don't allow removal of special categories
+            if (category.Type > 0) return;
+
+            // Move apps to uncategorized
+            Category uncategorized = GetSpecialCategory(AppCategoryType.Uncategorized);
+            for (int i = category.Count - 1; i >= 0; i--)
+            {
+                ApplicationInfo app = category[i];
+                category.RemoveAt(i);
+                uncategorized.Add(app);
+            }
+
+            category.CollectionChanged -= Category_CollectionChanged;
+            base.Remove(category);
+        }
+
+        private void Category_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            OnCategoryChanged(new EventArgs());
         }
 
         /// <summary>
@@ -83,12 +115,12 @@ namespace CairoDesktop.AppGrabber {
         /// <param name="category">Category to move.</param>
         /// <param name="delta">Number of places to move relative to starting index.</param>
         public bool MoveCategory(Category category, int delta) {
-            int currentIndex = this.IndexOf(category);
+            int currentIndex = IndexOf(category);
             int requestedIndex = currentIndex + delta;
-            if (requestedIndex < 0 || requestedIndex > this.Count - 1) {
+            if (requestedIndex < MIN_CATEGORIES || requestedIndex > Count - 1) {
                 return false;
             } else {
-                this.Move(currentIndex, requestedIndex);
+                Move(currentIndex, requestedIndex);
             }
             return true;
         }
@@ -196,8 +228,8 @@ namespace CairoDesktop.AppGrabber {
                     if (appElement.ChildNodes.Count > 2)
                         app.Target = appElement.ChildNodes[2].InnerText;
 
-                    if (!app.IsStoreApp && !Interop.Shell.Exists(app.Path)) {
-                        CairoLogger.Instance.Debug(app.Path + " does not exist");
+                    if (!app.IsStoreApp && !ShellHelper.Exists(app.Path)) {
+                        ShellLogger.Debug(app.Path + " does not exist");
                         continue;
                     }
                     
@@ -205,6 +237,11 @@ namespace CairoDesktop.AppGrabber {
                 }
             }
             return catList;
+        }
+
+        protected virtual void OnCategoryChanged(EventArgs e)
+        {
+            CategoryChanged?.Invoke(this, e);
         }
     }
 }

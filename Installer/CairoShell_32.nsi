@@ -9,6 +9,9 @@ Name "Cairo Desktop Environment"
 ; The file to write
 OutFile "CairoSetup_32bit.exe"
 
+; Use Unicode rather than ANSI
+Unicode True
+
 ; The default installation directory
 InstallDir "$PROGRAMFILES\Cairo Shell"
 
@@ -68,32 +71,15 @@ Section "$(SECT_cairo)" cairo
   ; Set output path to the installation directory.
   SetOutPath $INSTDIR
 
-  IfSilent 0 +2
-    Sleep 3000
-
-  System::Call 'kernel32::OpenMutex(i 0x100000, b 0, t "CairoShell") i .R1'
-  IntCmp $R1 0 notRunning
-    System::Call 'kernel32::CloseHandle(i $R1)'
-    MessageBox MB_OK|MB_ICONEXCLAMATION "$(DLOG_RunningText)" /SD IDOK
-    Quit
-  
-  notRunning:
+  Call AbortIfRunning
   
   ; Put file there
+  DetailPrint "Installing Cairo files"
   File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.exe"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.WindowsTray.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.WindowsTrayHooks.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.Common.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.AppGrabber.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.Configuration.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.Extensibility.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.Interop.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.Localization.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.UWPInterop.dll"
-  File "..\Cairo Desktop\Build\x86\Release\Interop.IWshRuntimeLibrary.dll"
-  File "..\Cairo Desktop\Build\x86\Release\CairoDesktop.WindowsTasks.dll"
-  File "..\Cairo Desktop\Build\x86\Release\White.xaml"
-  File "..\Cairo Desktop\Build\x86\Release\WinSparkle.dll"
+  File "..\Cairo Desktop\Build\x86\Release\*.dll"
+
+  CreateDirectory "$INSTDIR\Themes"
+  File /r "..\Cairo Desktop\Build\x86\Release\Themes"
 
   ; Set shell context to All Users
   SetShellVarContext all
@@ -107,9 +93,9 @@ Section "$(SECT_cairo)" cairo
   ; Write the uninstall keys for Windows
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "DisplayName" "Cairo Desktop Environment"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "DisplayIcon" '"$INSTDIR\RemoveCairo.exe"'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "DisplayVersion" "0.3"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "DisplayVersion" "BUILD_VERSION"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "UninstallString" '"$INSTDIR\RemoveCairo.exe"'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "URLInfoAbout" "http://cairodesktop.com"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "URLInfoAbout" "https://cairodesktop.com"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "Publisher" "Cairo Development Team"
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "NoModify" 1
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\CairoShell" "NoRepair" 1
@@ -137,19 +123,22 @@ SectionEnd
   ;Language strings
   LangString PAGE_Welcome_Text ${LANG_ENGLISH} "This installer will guide you through the installation of Cairo.\r\n\r\nBefore installing, please ensure .NET Framework 4.7.1 or higher is installed, and that any running instance of Cairo is ended.\r\n\r\nClick Next to continue."
   LangString PAGE_Finish_RunText ${LANG_ENGLISH} "Start Cairo Desktop Environment"
-  LangString PAGE_UnDir_TopText ${LANG_ENGLISH} "Please be sure that you have closed Cairo before uninstalling to ensure that all files are removed."
+  LangString PAGE_UnDir_TopText ${LANG_ENGLISH} "Please be sure that you have closed Cairo before uninstalling to ensure that all files are removed. All files in the directory below will be removed."
   LangString DLOG_RunningText ${LANG_ENGLISH} "Cairo is currently running. Please exit Cairo from the Cairo menu and run this installer again."
+  LangString DLOG_RunningText2 ${LANG_ENGLISH} "Cairo is currently running. Please exit Cairo from the Cairo menu."
   LangString DLOG_DotNetText ${LANG_ENGLISH} "Cairo requires Microsoft .NET Framework 4.7.1 or higher. Please install this from the Microsoft web site and install Cairo again."
   LangString SECT_cairo ${LANG_ENGLISH} "Cairo Desktop (required)"
   LangString SECT_startupCU ${LANG_ENGLISH} "Run at startup (current user)"
-  LangString SECT_shellCU ${LANG_ENGLISH} "Advanced users only: Replace Explorer (current user)"
+  LangString SECT_shellCU ${LANG_ENGLISH} "Advanced: Disable Explorer (current user)"
   LangString DESC_cairo ${LANG_ENGLISH} "Installs Cairo and its required components."
   LangString DESC_startupCU ${LANG_ENGLISH} "Makes Cairo start up when you log in."
-  LangString DESC_shellCU ${LANG_ENGLISH} "Run Cairo instead of Windows Explorer. Note this also disables many new features in Windows."
+  LangString DESC_shellCU ${LANG_ENGLISH} "Run Cairo instead of Windows Explorer. Note: this also disables UWP/Windows Store apps and other features in Windows using that technology."
+
   LangString PAGE_Welcome_Text ${LANG_FRENCH} "Cet installateur va vous guider au long de l'installation de Cairo.\r\n\r\nAvant d'installer, veuillez vous assurer que le .NET Framework 4.7.1 ou plus récent est installé, et que vous avez quitté toute instance de Cairo encore en cours de fonctionnement.\r\n\r\nCliquez sur Suivant pour continuer."
   LangString PAGE_Finish_RunText ${LANG_FRENCH} "Démarrer l'environnement de bureau Cairo"
-  LangString PAGE_UnDir_TopText ${LANG_FRENCH} "Veuillez vérifier que vous avez fermé Cairo avant de le désinstaller pour assurer que tous les fichiers soient supprimés."
+  LangString PAGE_UnDir_TopText ${LANG_FRENCH} "Veuillez vérifier que vous avez fermé Cairo avant de le désinstaller pour assurer que tous les fichiers soient supprimés. All files in the directory below will be removed."
   LangString DLOG_RunningText ${LANG_FRENCH} "Cairo est en cours de fonctionnement. Veuillez quitter Cairo depuis le menu Cairo et lancer de nouveau cet installateur."
+  LangString DLOG_RunningText2 ${LANG_FRENCH} "Cairo est en cours de fonctionnement. Veuillez quitter Cairo depuis le menu Cairo."
   LangString DLOG_DotNetText ${LANG_FRENCH} "Cairo nécessite le Microsoft .NET Framework 4.7.1 ou plus récent. Veuillez l'installer depuis le site web de Microsoft et installer de nouveau Cairo."
   LangString SECT_cairo ${LANG_FRENCH} "Bureau Cairo (requis)"
   LangString SECT_startupCU ${LANG_FRENCH} "Lancer au démarrage (utilisateur actuel)"
@@ -189,36 +178,15 @@ Section "Uninstall"
   DeleteRegValue HKCU "Software\Microsoft\Windows NT\CurrentVersion\Winlogon" "Shell"
 
   ; Remove files and uninstaller. Includes historical files
-  Delete "$INSTDIR\CairoDesktop.exe"
-  Delete "$INSTDIR\CairoDesktop.exe.config"
-  Delete "$INSTDIR\CairoDesktop.Configuration.dll.config"
-  Delete "$INSTDIR\Cairo.WindowsHooks.dll"
-  Delete "$INSTDIR\Cairo.WindowsHooksWrapper.dll"
-  Delete "$INSTDIR\CairoDesktop.WindowsTray.dll"
-  Delete "$INSTDIR\CairoDesktop.WindowsTrayHooks.dll"
-  Delete "$INSTDIR\CairoDesktop.Common.dll"
-  Delete "$INSTDIR\CairoDesktop.AppGrabber.dll"
-  Delete "$INSTDIR\CairoDesktop.Configuration.dll"
-  Delete "$INSTDIR\CairoDesktop.Extensibility.dll"
-  Delete "$INSTDIR\CairoDesktop.Interop.dll"
-  Delete "$INSTDIR\CairoDesktop.Localization.dll"
-  Delete "$INSTDIR\CairoDesktop.UWPInterop.dll"
-  Delete "$INSTDIR\Interop.IWshRuntimeLibrary.dll"
-  Delete "$INSTDIR\Interop.Shell32.dll"
-  Delete "$INSTDIR\WPFToolkit.dll"
-  Delete "$INSTDIR\SearchAPILib.dll"
   Delete "$SMPROGRAMS\Cairo Desktop.lnk"
-  Delete "$INSTDIR\UnhandledExceptionFilter.dll"
-  Delete "$INSTDIR\CairoDesktop.WindowsTasks.dll"
-  Delete "$INSTDIR\PostSharp.Core.dll"
-  Delete "$INSTDIR\PostSharp.Public.dll"
-  Delete "$INSTDIR\PostSharp.Laos.dll"
-  Delete "$INSTDIR\PostSharp.Core.XmlSerializers.dll"
-  Delete "$INSTDIR\RemoveCairo.exe"
-  Delete "$INSTDIR\White.xaml"
-  Delete "$INSTDIR\WinSparkle.dll"
+  Delete "$INSTDIR\*.exe"
+  Delete "$INSTDIR\*.xaml"
+  Delete "$INSTDIR\*.dll"
+  Delete "$INSTDIR\*.config"
+  Delete "$INSTDIR\Themes\*.xaml"
 
   ; Remove directories used
+  RMDir "$INSTDIR\Themes"
   RMDir "$INSTDIR"
 
 SectionEnd
@@ -231,7 +199,7 @@ Function LaunchCairo
     Exec '"$WINDIR\explorer.exe" "$INSTDIR\CairoDesktop.exe"' ; use the shell to launch as current user (otherwise notification area breaks)
     goto end_launch
   std_exec:
-    Exec '$INSTDIR\CairoDesktop.exe /restart'
+    Exec '$INSTDIR\CairoDesktop.exe /restart=true'
   end_launch:
 FunctionEnd
 
@@ -245,9 +213,40 @@ Function .onInstSuccess
     Call LaunchCairo
 FunctionEnd
 
+Function AbortIfRunning
+  DetailPrint "Checking if Cairo is currently running"
+  StrCpy $R0 "0" ; current retry count
+
+  IfSilent 0 +3
+    StrCpy $R2 "10" ; 10 retries when running silent
+    Goto check
+  StrCpy $R2 "2" ; 2 retries when running normally
+
+  check:
+    System::Call 'kernel32::OpenMutex(i 0x100000, b 0, t "CairoShell") i .R1 ?e'
+    IntCmp $R1 0 notRunning running running
+
+  retry:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(DLOG_RunningText2)" /SD IDOK
+    IntOp $R0 $R0 + 1
+    Sleep 1000
+    Goto check
+
+  running:
+    System::Call 'kernel32::CloseHandle(i $R1)'
+    IntCmp $R0 $R2 abort retry abort
+
+  abort:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(DLOG_RunningText)"
+    Quit
+
+  notRunning:
+FunctionEnd
+
 ; https://nsis.sourceforge.io/How_to_Detect_any_.NET_Framework
 ; Check .NET framework release version and quit if too old
 Function AbortIfBadFramework
+  DetailPrint "Checking currently installed .NET Framework version"
  
   ; Save the variables in case something else is using them
   Push $0
@@ -359,7 +358,7 @@ Function AbortIfBadFramework
   IntCmp $R9 ${MIN_FRA_RELEASE} end wrong_framework end
  
   wrong_framework:
-  MessageBox MB_OK|MB_ICONSTOP "$(DLOG_DotNetText)" /SD IDOK
+  MessageBox MB_OK|MB_ICONSTOP "$(DLOG_DotNetText)"
   Quit
  
   end:

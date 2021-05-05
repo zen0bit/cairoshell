@@ -1,34 +1,50 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using CairoDesktop.AppGrabber;
+using CairoDesktop.Configuration;
+using ManagedShell.Common.Helpers;
 
 namespace CairoDesktop
 {
 	public partial class QuickLaunchButton
 	{
-        static AppGrabber.AppGrabber appGrabber = AppGrabber.AppGrabber.Instance;
+        public static DependencyProperty ParentTaskbarProperty = DependencyProperty.Register("ParentTaskbar", typeof(Taskbar), typeof(QuickLaunchButton));
+        public Taskbar ParentTaskbar
+        {
+            get { return (Taskbar)GetValue(ParentTaskbarProperty); }
+            set { SetValue(ParentTaskbarProperty, value); }
+        }
 
-		public QuickLaunchButton()
+        public QuickLaunchButton()
 		{
-			this.InitializeComponent();
+			InitializeComponent();
 
-            switch (Configuration.Settings.TaskbarIconSize)
+            setIconSize();
+
+            // register for settings changes
+            Settings.Instance.PropertyChanged += Instance_PropertyChanged;
+        }
+
+        private void Instance_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e != null && !string.IsNullOrWhiteSpace(e.PropertyName))
             {
-                case 0:
-                    imgIcon.Width = 32;
-                    imgIcon.Height = 32;
-                    break;
-                case 10:
-                    imgIcon.Width = 24;
-                    imgIcon.Height = 24;
-                    break;
-                default:
-                    imgIcon.Width = 16;
-                    imgIcon.Height = 16;
-                    break;
+                switch (e.PropertyName)
+                {
+                    case "TaskbarIconSize":
+                        setIconSize();
+                        break;
+                }
             }
+        }
+
+        private void setIconSize()
+        {
+            imgIcon.Width = IconHelper.GetSize(Settings.Instance.TaskbarIconSize);
+            imgIcon.Height = IconHelper.GetSize(Settings.Instance.TaskbarIconSize);
         }
 
         private void LaunchProgram(object sender, RoutedEventArgs e)
@@ -36,7 +52,7 @@ namespace CairoDesktop
             Button item = (Button)sender;
             ApplicationInfo app = item.DataContext as ApplicationInfo;
 
-            appGrabber.LaunchProgram(app);
+            ParentTaskbar._appGrabber.LaunchProgram(app);
         }
 
         private void LaunchProgramMenu(object sender, RoutedEventArgs e)
@@ -44,7 +60,7 @@ namespace CairoDesktop
             MenuItem item = (MenuItem)sender;
             ApplicationInfo app = item.DataContext as ApplicationInfo;
 
-            appGrabber.LaunchProgram(app);
+            ParentTaskbar._appGrabber.LaunchProgram(app);
         }
 
         private void LaunchProgramAdmin(object sender, RoutedEventArgs e)
@@ -52,7 +68,7 @@ namespace CairoDesktop
             MenuItem item = (MenuItem)sender;
             ApplicationInfo app = item.DataContext as ApplicationInfo;
 
-            appGrabber.LaunchProgramAdmin(app);
+            ParentTaskbar._appGrabber.LaunchProgramAdmin(app);
         }
 
         private void programsMenu_Remove(object sender, RoutedEventArgs e)
@@ -60,7 +76,15 @@ namespace CairoDesktop
             MenuItem item = (MenuItem)sender;
             ApplicationInfo app = item.DataContext as ApplicationInfo;
 
-            appGrabber.RemoveAppConfirm(app);
+            ParentTaskbar._appGrabber.RemoveAppConfirm(app, null);
+        }
+
+        private void programsMenu_Rename(object sender, RoutedEventArgs e)
+        {
+            MenuItem item = (MenuItem)sender;
+            ApplicationInfo app = item.DataContext as ApplicationInfo;
+
+            ParentTaskbar._appGrabber.RenameAppDialog(app, null);
         }
 
         private void programsMenu_Properties(object sender, RoutedEventArgs e)
@@ -68,62 +92,69 @@ namespace CairoDesktop
             MenuItem item = (MenuItem)sender;
             ApplicationInfo app = item.DataContext as ApplicationInfo;
 
-            AppGrabber.AppGrabber.ShowAppProperties(app);
+            ParentTaskbar._appGrabber.ShowAppProperties(app);
         }
 
         #region Drag and drop reordering
 
         private Point? startPoint = null;
-        private bool ctxOpen = false;
-        private bool inMove = false;
+        private bool inDrag = false;
+
+        // receive drop functions
+        private void btn_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Link;
+            }
+            else if (!e.Data.GetDataPresent(typeof(ApplicationInfo)))
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
 
         private void btn_Drop(object sender, DragEventArgs e)
         {
             Button dropContainer = sender as Button;
             ApplicationInfo replacedApp = dropContainer.DataContext as ApplicationInfo;
 
-            String[] fileNames = e.Data.GetData(DataFormats.FileDrop) as String[];
+            string[] fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (fileNames != null)
             {
-                foreach (String fileName in fileNames)
-                {
-                    appGrabber.AddByPath(fileNames, AppCategoryType.QuickLaunch);
-                    int dropIndex = appGrabber.QuickLaunch.IndexOf(replacedApp);
-
-                    ApplicationInfo addedApp = appGrabber.QuickLaunch[appGrabber.QuickLaunch.Count - 1];
-                    appGrabber.QuickLaunch.Move(appGrabber.QuickLaunch.Count - 1, dropIndex);
-                    appGrabber.Save();
-                }
+                int dropIndex = ParentTaskbar._appGrabber.QuickLaunch.IndexOf(replacedApp);
+                ParentTaskbar._appGrabber.InsertByPath(fileNames, dropIndex, AppCategoryType.QuickLaunch);
             }
             else if (e.Data.GetDataPresent(typeof(ApplicationInfo)))
             {
                 ApplicationInfo dropData = e.Data.GetData(typeof(ApplicationInfo)) as ApplicationInfo;
 
-                int initialIndex = appGrabber.QuickLaunch.IndexOf(dropData);
-                int dropIndex = appGrabber.QuickLaunch.IndexOf(replacedApp);
-                appGrabber.QuickLaunch.Move(initialIndex, dropIndex);
-                appGrabber.Save();
+                int initialIndex = ParentTaskbar._appGrabber.QuickLaunch.IndexOf(dropData);
+                int dropIndex = ParentTaskbar._appGrabber.QuickLaunch.IndexOf(replacedApp);
+                ParentTaskbar._appGrabber.QuickLaunch.Move(initialIndex, dropIndex);
+                ParentTaskbar._appGrabber.Save();
             }
+
+            setParentAutoHide(true);
 
             e.Handled = true;
         }
 
+        // send drag functions
         private void btn_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (!ctxOpen)
-            {
-                // Store the mouse position
-                startPoint = e.GetPosition(null);
-            }
+            // Store the mouse position
+            startPoint = e.GetPosition(this);
         }
 
         private void btn_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (!inMove && startPoint != null && !ctxOpen)
+            if (!inDrag && startPoint != null)
             {
-                inMove = true;
+                inDrag = true;
 
-                Point mousePos = e.GetPosition(null);
+                Point mousePos = e.GetPosition(this);
                 Vector diff = (Point)startPoint - mousePos;
 
                 if (mousePos.Y <= this.ActualHeight && ((Point)startPoint).Y <= this.ActualHeight && e.LeftButton == MouseButtonState.Pressed && (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance || Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance))
@@ -134,47 +165,36 @@ namespace CairoDesktop
                     try
                     {
                         DragDrop.DoDragDrop(button, selectedApp, DragDropEffects.Move);
+
+                        setParentAutoHide(true);
                     }
                     catch { }
 
                     // reset the stored mouse position
                     startPoint = null;
                 }
+                else if (e.LeftButton != MouseButtonState.Pressed)
+                {
+                    // reset the stored mouse position
+                    startPoint = null;
+                }
 
-                inMove = false;
-            }
-
-            e.Handled = true;
-        }
-
-        private void btn_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            // reset the stored mouse position
-            startPoint = null;
-        }
-
-        private void ContextMenu_Opened(object sender, RoutedEventArgs e)
-        {
-            startPoint = null;
-            ctxOpen = true;
-        }
-
-        private void ContextMenu_Closed(object sender, RoutedEventArgs e)
-        {
-            ctxOpen = false;
-        }
-
-        private void btn_DragEnter(object sender, DragEventArgs e)
-        {
-            String[] formats = e.Data.GetFormats(true);
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                e.Effects = DragDropEffects.Copy;
+                inDrag = false;
             }
 
             e.Handled = true;
         }
 
         #endregion
+
+        private void ContextMenu_Closed(object sender, RoutedEventArgs e)
+        {
+            setParentAutoHide(true);
+        }
+
+        private void setParentAutoHide(bool enabled)
+        {
+            if (ParentTaskbar != null) ParentTaskbar.CanAutoHide = enabled;
+        }
     }
 }

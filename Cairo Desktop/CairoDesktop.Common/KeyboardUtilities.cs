@@ -1,4 +1,4 @@
-﻿using CairoDesktop.Interop;
+﻿using ManagedShell.Interop;
 
 namespace CairoDesktop.Common
 {
@@ -18,6 +18,7 @@ namespace CairoDesktop.Common
         {
             if (NativeMethods.GetAsyncKeyState((int)key) < 0)
                 return true;
+
             return false;
         }
     }

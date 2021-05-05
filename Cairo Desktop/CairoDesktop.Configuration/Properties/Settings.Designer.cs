@@ -12,7 +12,7 @@ namespace CairoDesktop.Configuration.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.6.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.8.1.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -145,18 +145,6 @@ namespace CairoDesktop.Configuration.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool EnableSubDirs {
-            get {
-                return ((bool)(this["EnableSubDirs"]));
-            }
-            set {
-                this["EnableSubDirs"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string DesktopDirectory {
             get {
@@ -200,18 +188,6 @@ namespace CairoDesktop.Configuration.Properties {
             }
             set {
                 this["DefaultProgramsCategory"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool EnableTaskbarPolling {
-            get {
-                return ((bool)(this["EnableTaskbarPolling"]));
-            }
-            set {
-                this["EnableTaskbarPolling"] = value;
             }
         }
         
@@ -349,7 +325,7 @@ namespace CairoDesktop.Configuration.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool EnableMenuBarBlur {
             get {
                 return ((bool)(this["EnableMenuBarBlur"]));
@@ -404,6 +380,235 @@ namespace CairoDesktop.Configuration.Properties {
             }
             set {
                 this["FullWidthTaskBar"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool ShowHibernate {
+            get {
+                return ((bool)(this["ShowHibernate"]));
+            }
+            set {
+                this["ShowHibernate"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int TaskbarMiddleClick {
+            get {
+                return ((int)(this["TaskbarMiddleClick"]));
+            }
+            set {
+                this["TaskbarMiddleClick"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("windowsDefaultBackground")]
+        public string DesktopBackgroundType {
+            get {
+                return ((string)(this["DesktopBackgroundType"]));
+            }
+            set {
+                this["DesktopBackgroundType"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("4")]
+        public int BingWallpaperStyle {
+            get {
+                return ((int)(this["BingWallpaperStyle"]));
+            }
+            set {
+                this["BingWallpaperStyle"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CairoBackgroundImagePath {
+            get {
+                return ((string)(this["CairoBackgroundImagePath"]));
+            }
+            set {
+                this["CairoBackgroundImagePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("4")]
+        public int CairoBackgroundImageStyle {
+            get {
+                return ((int)(this["CairoBackgroundImageStyle"]));
+            }
+            set {
+                this["CairoBackgroundImageStyle"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CairoBackgroundVideoPath {
+            get {
+                return ((string)(this["CairoBackgroundVideoPath"]));
+            }
+            set {
+                this["CairoBackgroundVideoPath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ProgramsMenuLayout {
+            get {
+                return ((int)(this["ProgramsMenuLayout"]));
+            }
+            set {
+                this["ProgramsMenuLayout"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0,0")]
+        public global::System.Windows.Point DesktopNavigationToolbarLocation {
+            get {
+                return ((global::System.Windows.Point)(this["DesktopNavigationToolbarLocation"]));
+            }
+            set {
+                this["DesktopNavigationToolbarLocation"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("7820ae76-23e3-4229-82c1-e41cb67d5b9c|7820ae75-23e3-4229-82c1-e41cb67d5b9c|7820ae7" +
+            "4-23e3-4229-82c1-e41cb67d5b9c|7820ae73-23e3-4229-82c1-e41cb67d5b9c")]
+        public string PinnedNotifyIcons {
+            get {
+                return ((string)(this["PinnedNotifyIcons"]));
+            }
+            set {
+                this["PinnedNotifyIcons"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableTaskbarThumbnails {
+            get {
+                return ((bool)(this["EnableTaskbarThumbnails"]));
+            }
+            set {
+                this["EnableTaskbarThumbnails"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableMenuExtraVolume {
+            get {
+                return ((bool)(this["EnableMenuExtraVolume"]));
+            }
+            set {
+                this["EnableMenuExtraVolume"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableMenuExtraActionCenter {
+            get {
+                return ((bool)(this["EnableMenuExtraActionCenter"]));
+            }
+            set {
+                this["EnableMenuExtraActionCenter"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableMenuExtraClock {
+            get {
+                return ((bool)(this["EnableMenuExtraClock"]));
+            }
+            set {
+                this["EnableMenuExtraClock"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableMenuExtraSearch {
+            get {
+                return ((bool)(this["EnableMenuExtraSearch"]));
+            }
+            set {
+                this["EnableMenuExtraSearch"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableMenuBar {
+            get {
+                return ((bool)(this["EnableMenuBar"]));
+            }
+            set {
+                this["EnableMenuBar"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ShowTaskbarLabels {
+            get {
+                return ((bool)(this["ShowTaskbarLabels"]));
+            }
+            set {
+                this["ShowTaskbarLabels"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("140")]
+        public int TaskbarButtonWidth {
+            get {
+                return ((int)(this["TaskbarButtonWidth"]));
+            }
+            set {
+                this["TaskbarButtonWidth"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("29")]
+        public int TaskbarButtonHeight {
+            get {
+                return ((int)(this["TaskbarButtonHeight"]));
+            }
+            set {
+                this["TaskbarButtonHeight"] = value;
             }
         }
     }

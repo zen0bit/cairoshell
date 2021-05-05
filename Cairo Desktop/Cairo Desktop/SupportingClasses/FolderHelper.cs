@@ -1,6 +1,8 @@
-﻿using CairoDesktop.Configuration;
-using CairoDesktop.Interop;
-using System;
+﻿using System;
+using CairoDesktop.Configuration;
+using CairoDesktop.Services;
+using ManagedShell.Common.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CairoDesktop.SupportingClasses
 {
@@ -8,12 +10,15 @@ namespace CairoDesktop.SupportingClasses
     {
         public static bool OpenLocation(string path)
         {
-            if (Settings.EnableDynamicDesktop && Settings.FoldersOpenDesktopOverlay && Startup.DesktopWindow != null && !path.StartsWith("::{"))
+            if (Settings.Instance.EnableDynamicDesktop && Settings.Instance.FoldersOpenDesktopOverlay && DesktopManager.IsEnabled)
             {
                 try
                 {
-                    Startup.DesktopWindow.Navigate(path);
-                    Startup.DesktopWindow.IsOverlayOpen = true;
+                    var desktopManager = CairoApplication.Current.Host.Services.GetService<DesktopManager>();
+
+                    desktopManager.NavigationManager.NavigateTo(path);
+                    desktopManager.IsOverlayOpen = true;
+
                     return true;
                 }
                 catch
@@ -21,18 +26,20 @@ namespace CairoDesktop.SupportingClasses
                     return false;
                 }
             }
-            else 
-            {
-                return OpenWithShell(path);
-            }
+
+            return OpenWithShell(path);
         }
 
         public static bool OpenWithShell(string path)
-        {
-            if (Startup.DesktopWindow != null)
-                Startup.DesktopWindow.IsOverlayOpen = false;
+        {                    
+            var desktopManager = CairoApplication.Current.Host.Services.GetService<DesktopManager>();
 
-            return Shell.StartProcess(Environment.ExpandEnvironmentVariables(Settings.FileManager), path);
+            desktopManager.IsOverlayOpen = false;
+
+            var args = Environment.ExpandEnvironmentVariables(path);
+            var filename = Environment.ExpandEnvironmentVariables(Settings.Instance.FileManager);
+
+            return ShellHelper.StartProcess(filename, $@"""{args}""");
         }
     }
 }

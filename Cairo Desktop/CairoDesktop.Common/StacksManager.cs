@@ -1,30 +1,25 @@
-﻿using CairoDesktop.Common;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.IO;
+using System.Linq;
 using System.Windows;
-using System.Windows.Threading;
+using ManagedShell.Common.Helpers;
+using ManagedShell.Common.Logging;
+using ManagedShell.Interop;
+using ManagedShell.ShellFolders;
 
 namespace CairoDesktop.Common
 {
-    public class StacksManager
+    public class StacksManager : DependencyObject
     {
-        private static bool isInitialized = false;
-        private static string stackConfigFile = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\CairoStacksConfig.xml";
-        private static System.Xml.Serialization.XmlSerializer serializer;
+        private readonly string stackConfigFile = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\CairoStacksConfig.xml";
+        private System.Xml.Serialization.XmlSerializer serializer;
 
-        private static InvokingObservableCollection<SystemDirectory> _stackLocations = new InvokingObservableCollection<SystemDirectory>(Application.Current.Dispatcher);
+        private InvokingObservableCollection<ShellFolder> _stackLocations = new InvokingObservableCollection<ShellFolder>(Application.Current.Dispatcher);
 
-        public static InvokingObservableCollection<SystemDirectory> StackLocations
+        public InvokingObservableCollection<ShellFolder> StackLocations
         {
-            get
-            {
-                if (!isInitialized)
-                    initialize();
-
-                return _stackLocations;
-            }
+            get => _stackLocations;
             set
             {
                 if (!Application.Current.Dispatcher.CheckAccess())
@@ -37,105 +32,119 @@ namespace CairoDesktop.Common
             }
         }
 
+        private static readonly StacksManager _instance = new StacksManager();
+        public static StacksManager Instance => _instance;
+
         public StacksManager()
         {
-            
+            initialize();
         }
 
-        private static void initialize()
+        private void initialize()
         {
-            isInitialized = true;
-
             // this causes an exception, thanks MS!
             //serializer = new System.Xml.Serialization.XmlSerializer(typeof(List<String>));
 
-            serializer = System.Xml.Serialization.XmlSerializer.FromTypes(new[] { typeof(List<String>) })[0];
+            serializer = System.Xml.Serialization.XmlSerializer.FromTypes(new[] { typeof(List<string>) })[0];
 
             try
             {
                 deserializeStacks();
             }
-            catch { }
+            catch (Exception e)
+            {
+                ShellLogger.Error($"StacksManager: Unable to deserialize stacks config: {e.Message}");
+            }
 
-            StackLocations.CollectionChanged += new NotifyCollectionChangedEventHandler(stackLocations_CollectionChanged);
+            StackLocations.CollectionChanged += stackLocations_CollectionChanged;
         }
 
-        static void stackLocations_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void stackLocations_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             serializeStacks();
         }
 
-        public static bool AddLocation(string path)
+        public bool AddLocation(string path)
         {
-            if (Directory.Exists(path))
+            if (CanAdd(path))
             {
-                SystemDirectory dir = new SystemDirectory(path, Dispatcher.CurrentDispatcher);
+                ShellFolder dir = new ShellFolder(path, IntPtr.Zero, true);
 
-                if (!StackLocations.Contains(dir))
+                if (dir.IsNavigableFolder)
                 {
                     StackLocations.Add(dir);
                     return true;
                 }
+
+                dir.Dispose();
             }
 
             return false;
         }
 
-        private static void serializeStacks()
+        public bool CanAdd(string path)
         {
-            List<String> locationPaths = new List<String>();
-            foreach (SystemDirectory dir in StackLocations)
+            return !string.IsNullOrEmpty(path) && StackLocations.All(i => i.Path != path);
+        }
+
+        public void RemoveLocation(ShellFolder directory)
+        {
+            directory.Dispose();
+            StackLocations.Remove(directory);
+        }
+
+        public void RemoveLocation(string path)
+        {
+            for (int i = 0; i < StackLocations.Count; i++)
             {
-                locationPaths.Add(dir.FullName);
+                if (StackLocations[i].Path == path)
+                {
+                    StackLocations.RemoveAt(i);
+                    break;
+                }
             }
-            System.Xml.XmlWriterSettings settings = new System.Xml.XmlWriterSettings();
-            settings.Indent = true;
-            settings.IndentChars = "    ";
+        }
+
+        private void serializeStacks()
+        {
+            List<string> locationPaths = new List<string>();
+            foreach (ShellFolder dir in StackLocations)
+            {
+                locationPaths.Add(dir.Path);
+            }
+            System.Xml.XmlWriterSettings settings = new System.Xml.XmlWriterSettings
+            {
+                Indent = true,
+                IndentChars = "    "
+            };
             System.Xml.XmlWriter writer = System.Xml.XmlWriter.Create(stackConfigFile, settings);
             serializer.Serialize(writer, locationPaths);
             writer.Close();
         }
 
-        private static void deserializeStacks()
+        private void deserializeStacks()
         {
-            if (Interop.Shell.Exists(stackConfigFile))
+            if (ShellHelper.Exists(stackConfigFile))
             {
                 System.Xml.XmlReader reader = System.Xml.XmlReader.Create(stackConfigFile);
-                List<String> locationPaths = serializer.Deserialize(reader) as List<String>;
-                foreach (String path in locationPaths)
+
+                if (serializer.Deserialize(reader) is List<string> locationPaths)
                 {
-                    StacksManager.AddLocation(path);
+                    foreach (string path in locationPaths)
+                    {
+                        AddLocation(path);
+                    }
                 }
+
                 reader.Close();
             }
             else
             {
-                // Add some default folders on FirstRun
+                // Add some default folders on first run
+                AddLocation(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.None));
+                AddLocation(KnownFolders.GetPath(KnownFolder.Downloads, NativeMethods.KnownFolderFlags.None));
 
-                // Check for Documents Folder
-                String myDocsPath = Interop.KnownFolders.GetPath(Interop.KnownFolder.Documents);
-                if (Directory.Exists(myDocsPath))
-                {
-                    SystemDirectory myDocsSysDir = new SystemDirectory(myDocsPath, Dispatcher.CurrentDispatcher);
-                    // Don't duplicate defaults
-                    if (!StackLocations.Contains(myDocsSysDir))
-                    {
-                        StackLocations.Add(myDocsSysDir);
-                    }
-                }
-                // Check for Downloads folder
-                String downloadsPath = Interop.KnownFolders.GetPath(Interop.KnownFolder.Downloads);
-                if (Directory.Exists(downloadsPath))
-                {
-                    SystemDirectory downloadsSysDir = new SystemDirectory(downloadsPath, Dispatcher.CurrentDispatcher);
-                    // Don't duplicate defaults
-                    if (!StackLocations.Contains(downloadsSysDir))
-                    {
-                        StackLocations.Add(downloadsSysDir);
-                    }
-                }
-
-                // save
+                // Save
                 serializeStacks();
             }
         }

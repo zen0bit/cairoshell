@@ -1,4 +1,4 @@
-﻿using CairoDesktop.Interop;
+﻿using CairoDesktop.SupportingClasses;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,6 +6,8 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using ManagedShell.Common.Helpers;
+using ManagedShell.Common.Logging;
 
 namespace CairoDesktop.AppGrabber
 {
@@ -14,7 +16,7 @@ namespace CairoDesktop.AppGrabber
     /// </summary>
     public partial class AppGrabberUI : Window
     {
-        private AppGrabber appGrabber;
+        private AppGrabberService appGrabber;
         ObservableCollection<ApplicationInfo> programsMenuAppsCollection;
 
         public Visibility AppVisibility
@@ -44,25 +46,26 @@ namespace CairoDesktop.AppGrabber
         public static readonly DependencyProperty AppVisibilityProperty = DependencyProperty.Register("AppVisibility", typeof(Visibility), typeof(AppGrabberUI), new PropertyMetadata(null));
         private static readonly DependencyProperty bAppsHiddenProperty = DependencyProperty.Register("bAppsHidden", typeof(bool), typeof(AppGrabberUI), new PropertyMetadata(null));
 
+        // Required by WPF, should not be used
         public AppGrabberUI()
-            : this(AppGrabber.Instance)
         {
+            ShellLogger.Error("Unable to initialize AppGrabberUI due to missing AppGrabber.");
         }
 
-        public AppGrabberUI(AppGrabber appGrabber)
+        public AppGrabberUI(AppGrabberService appGrabber)
         {
             this.appGrabber = appGrabber;
             InitializeComponent();
 
-            Height = (SystemParameters.MaximizedPrimaryScreenHeight / Shell.DpiScaleAdjustment) - 100;
-            MaxHeight = SystemParameters.MaximizedPrimaryScreenHeight / Shell.DpiScaleAdjustment;
+            Height = (SystemParameters.MaximizedPrimaryScreenHeight / DpiHelper.DpiScaleAdjustment) - 100;
+            MaxHeight = SystemParameters.MaximizedPrimaryScreenHeight / DpiHelper.DpiScaleAdjustment;
         }
 
         #region Button Clicks
 
         private void SkipWizard(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            Close();
         }
 
         private void btnContinue_Click(object sender, RoutedEventArgs e)
@@ -73,39 +76,40 @@ namespace CairoDesktop.AppGrabber
         private void btnSave_Click(object sender, RoutedEventArgs e)
         {
             appGrabber.Save();
-            this.Close();
+            Close();
         }
 
         private void btnBrowse_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog dlg = new OpenFileDialog();
-            dlg.Filter = "Programs and shortcuts|";
-
-            foreach (string ext in AppGrabber.ExecutableExtensions)
+            string filter = "Programs and shortcuts|";
+            foreach (string ext in AppGrabberService.ExecutableExtensions)
             {
-                dlg.Filter += "*" + ext + ";";
+                filter += $"*{ext};";
             }
 
-            dlg.Filter = dlg.Filter.Substring(0, dlg.Filter.Length - 2);
+            filter = filter.Substring(0, filter.Length - 2);
 
-            System.Windows.Forms.DialogResult result;
-
-            try
+            using (OpenFileDialog dlg = new OpenFileDialog
             {
-                result = dlg.ShowDialog();
-            }
-            catch
+                Filter = filter
+            })
             {
-                // show retro dialog if the better one fails to load
-                dlg.AutoUpgradeEnabled = false;
-                result = dlg.ShowDialog();
-            }
-
-            if (result == System.Windows.Forms.DialogResult.OK && Interop.Shell.Exists(dlg.FileName))
-            {
-                ApplicationInfo customApp = AppGrabber.PathToApp(dlg.FileName, true);
-                if (!object.ReferenceEquals(customApp, null))
-                    programsMenuAppsCollection.Add(customApp);
+                if (dlg.SafeShowDialog() == System.Windows.Forms.DialogResult.OK && ShellHelper.Exists(dlg.FileName))
+                {
+                    ApplicationInfo customApp = AppGrabberService.PathToApp(dlg.FileName, true, true);
+                    if (!ReferenceEquals(customApp, null))
+                    {
+                        if (!programsMenuAppsCollection.Contains(customApp) && !(InstalledAppsView.ItemsSource as ObservableCollection<ApplicationInfo>).Contains(customApp))
+                        {
+                            programsMenuAppsCollection.Add(customApp);
+                        }
+                        else
+                        {
+                            // disallow adding a duplicate
+                            ShellLogger.Debug("Excluded duplicate item: " + customApp.Name + ": " + customApp.Target);
+                        }
+                    }
+                }
             }
         }
 
@@ -205,7 +209,7 @@ namespace CairoDesktop.AppGrabber
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            AppGrabber.uiInstance = null;
+            AppGrabberService.uiInstance = null;
         }
 
         private void ScrollViewer_DragOver(object sender, System.Windows.DragEventArgs e)
@@ -259,7 +263,16 @@ namespace CairoDesktop.AppGrabber
             "Skype for Business 20|contains|" + productivity,
             "Word 20|contains|" + productivity,
             "Visio 20|contains|" + productivity,
+            "Access|full|" + productivity,
+            "Excel|full|" + productivity,
+            "PowerPoint|full|" + productivity,
+            "Publisher|full|" + productivity,
+            "OneNote|full|" + productivity,
+            "Outlook|full|" + productivity,
+            "Word|full|" + productivity,
+            "Visio|full|" + productivity,
             "SumatraPDF|full|" + productivity,
+            "Microsoft Teams|full|" + productivity,
             // development
             "Android Studio|contains|" + development,
             "Eclipse|contains|" + development,
